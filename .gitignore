@@ -1,0 +1,43 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+
+# ---- Market data (NEVER committed: size + HistData license) ----
+# Note: source code lives in mtf_smc/data/ and IS committed; only data *files* are ignored.
+/data_cache/
+/data_raw/
+*.pkl
+*.xlsx
+*.xls
+*.zip
+
+# ---- Run artifacts / generated outputs ----
+/output/
+/reports/
+*.log
+
+# Keep curated figures + the tiny synthetic sample referenced by docs/README
+!assets/
+!assets/**
+!tests/sample_data/
+!tests/sample_data/**
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
