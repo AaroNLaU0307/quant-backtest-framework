@@ -32,9 +32,11 @@ def trades_to_frame(trades: List[ClosedTrade]) -> pd.DataFrame:
     """Flatten closed trades into a tidy DataFrame (one row per trade)."""
     rows = [{
         "entry_ts": t.entry_ts, "exit_ts": t.exit_ts, "direction": t.direction,
-        "tag": t.tag, "tp_mode": t.tp_mode, "lots": t.lots, "entry": t.entry_price,
-        "initial_stop": t.initial_stop, "exit_reason": t.exit_reason,
-        "R": t.realized_R, "net_money": t.net_money, "gross_money": t.gross_money,
+        "tag": t.tag, "tp_mode": t.tp_mode, "lots": t.lots,
+        "entry_ref": t.entry_ref, "entry": t.entry_price, "initial_stop": t.initial_stop,
+        "exit_reason": t.exit_reason, "R": t.realized_R,
+        "net_money": t.net_money, "gross_money": t.gross_money,
+        "spread": t.cost_spread, "slippage": t.cost_slippage,
         "commission": t.cost_commission, "swap": t.cost_swap,
         "mae_R": t.mae_R, "mfe_R": t.mfe_R,
     } for t in trades]
@@ -116,12 +118,12 @@ def simulate(
             if d in open_pos:
                 continue
             if lo[i] <= s.entry <= h[i]:                       # limit traded through
-                fill_px = cost.entry_fill(s.entry, d)
+                fill_px = cost.entry_fill(s.entry, d)          # for sizing (1R = |fill - stop|)
                 lots = position_size(equity, cfg.risk_pct, fill_px, s.initial_stop, instrument)
                 if lots <= 0:
                     del pending[d]; continue
                 open_pos[d] = Position(
-                    d, fill_px, lots, s.initial_stop, s.tp_mode, s.htf_target, ts, cost,
+                    d, s.entry, lots, s.initial_stop, s.tp_mode, s.htf_target, ts, cost,
                     be_at_2R=cfg.be_at_2R, be_buffer=cfg.be_buffer, tag=s.tag,
                 )
                 del pending[d]

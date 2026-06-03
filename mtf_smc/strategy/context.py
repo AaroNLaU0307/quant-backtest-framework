@@ -37,6 +37,8 @@ class TFView:
     fvgs: List[FVG]
     structure: List[StructureEvent]
     pois: List[POI]
+    major_swings_high: List[Swing]      # larger-fractal swings (significant key levels)
+    major_swings_low: List[Swing]
 
     # ------------------------------------------------------------------ #
     def latest_closed_pos(self, ts: pd.Timestamp) -> int:
@@ -72,9 +74,17 @@ class TFView:
                 out = ev
         return out
 
-    def nearest_opposing_swing(self, ts: pd.Timestamp, direction: str, beyond: float) -> Optional[float]:
-        """Nearest confirmed swing in the profit direction beyond ``beyond`` (frozen TP target)."""
-        swings = self.swings_high if direction == "long" else self.swings_low
+    def nearest_opposing_swing(self, ts: pd.Timestamp, direction: str, beyond: float,
+                               major: bool = False) -> Optional[float]:
+        """Nearest confirmed swing in the profit direction beyond ``beyond`` (frozen TP target).
+
+        ``major=True`` uses the larger-fractal "major" swings (significant key levels / liquidity
+        pools, typically further away ⇒ higher R:R); otherwise the ordinary swings.
+        """
+        if direction == "long":
+            swings = self.major_swings_high if major else self.swings_high
+        else:
+            swings = self.major_swings_low if major else self.swings_low
         best: Optional[float] = None
         for s in swings:
             if self.df.index[s.index] + self.dur > ts:
@@ -102,13 +112,14 @@ def build_tf_view(m1: pd.DataFrame, tf: str, cfg: StrategyConfig) -> TFView:
     atr = atr_wilder(df, cfg.atr_period)
     bias = vegas_bias(df["close"], cfg.ema_fast, cfg.ema_slow).to_numpy()
     sh, sl = detect_swings(df, cfg.swing_lookback)
+    major_sh, major_sl = detect_swings(df, cfg.major_swing_lookback)
     fvgs = detect_fvgs(df, cfg.fvg_min_atr, atr)
     structure = detect_structure(df, cfg.swing_lookback)
     pois = build_pois(structure, fvgs, cfg.fvg_assoc_window)
     return TFView(
         tf=tf, df=df, dur=tf_duration(tf), close_times=df.index + tf_duration(tf),
         atr=atr, bias=bias, swings_high=sh, swings_low=sl, fvgs=fvgs,
-        structure=structure, pois=pois,
+        structure=structure, pois=pois, major_swings_high=major_sh, major_swings_low=major_sl,
     )
 
 

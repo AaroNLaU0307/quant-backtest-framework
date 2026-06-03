@@ -81,6 +81,10 @@ class StrategyConfig:
     fvg_min_atr: float = 0.10           # drop FVGs smaller than this * ATR
     fvg_assoc_window: int = 12          # bars to associate an FVG with a structural break
 
+    # HTF_level / scale TP target: which opposing HTF swing to aim for.
+    htf_target_mode: str = "major_swing"   # 'major_swing' (significant key level, high R:R) | 'nearest_swing'
+    major_swing_lookback: int = 5          # larger fractal => fewer, more significant HTF swings
+
     # --- bias filter & management ---
     ema_filter: bool = True
     ema_bias_tf: str = "htf"            # which TF the Vegas bias reads: 'htf' | 'mtf'

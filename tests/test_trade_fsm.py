@@ -68,11 +68,14 @@ def test_same_bar_stop_wins_tie_break():
 
 def test_costs_reduce_realized_R():
     pos = _long(cost=CostModel(XAUUSD))   # default spread/commission on
-    closed = pos.on_bar(Bar(2000, 2030, 2000, 2025), TS1)
-    # gross 3R minus half-spread on the exit and round-turn commission -> just under 3R.
-    assert closed.realized_R == pytest.approx(2.983, abs=1e-3)
-    assert closed.net_money < closed.gross_money       # commission subtracted
-    assert closed.cost_commission == pytest.approx(7.0)  # 3.5/side * 1 lot * 2 sides
+    # entry fills at 2000.10 -> R_unit 10.10 -> 3R target 2030.40 (bar must reach it).
+    closed = pos.on_bar(Bar(2000, 2031, 2000, 2025), TS1)
+    assert closed.exit_reason == "tp"
+    assert closed.realized_R == pytest.approx(2.983, abs=1e-3)   # ~3R minus round-trip spread + commission
+    assert closed.net_money < closed.gross_money
+    assert closed.cost_spread == pytest.approx(20.0)   # full $0.20 spread * $100/pt * 1 lot
+    assert closed.cost_slippage == pytest.approx(0.0)  # TP is a limit, no slippage
+    assert closed.cost_commission == pytest.approx(7.0)
 
 
 def test_short_3R_win():

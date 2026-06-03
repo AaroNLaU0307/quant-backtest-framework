@@ -211,9 +211,14 @@ For an **impulse leg** with protected extreme `P` and impulse extreme `X` (long:
 
 ### 3.3 Take-profit modes
 - (a) **`fixed_3R`** — exit at entry ± 3·(initial risk).
-- (b) **`HTF_level`** — the **nearest opposing liquidity level on the HTF**, defined from
-  **already-confirmed structure and FIXED at entry** (the most recent confirmed opposing HTF swing
-  beyond entry). **Never recomputed from future bars** (this is the V2 look-ahead bug; §7.4).
+- (b) **`HTF_level`** — an **opposing HTF key level**, from **already-confirmed structure and FIXED
+  at entry**. 🔧 **DECISION — `htf_target_mode`:** default **`major_swing`** = the nearest opposing
+  **significant** HTF swing beyond entry, where "significant" = a larger-fractal swing
+  (`major_swing_lookback`, default 5) — i.e. a genuine key level / liquidity pool with high R:R (the
+  intended behaviour). Ablation **`nearest_swing`** = the nearest ordinary confirmed swing (often
+  close to entry, low R:R). Either way the level is **frozen at entry, never recomputed from future
+  bars** (this was the V2 look-ahead bug; §7.4). If no qualifying level exists, the trade rides to
+  its stop/breakeven (no fixed TP).
 - (c) **`scale_2R_then_HTF`** — close 50% at +2R, run the remainder to the `HTF_level`.
 
 ### 3.4 Management
@@ -244,7 +249,8 @@ Primary cross-product (enumerated and printed at runtime):
 - **Number of trials = 42** is fed explicitly into DSR / BH-FDR (§5).
 - **Secondary / ablation** (run **only** on the strongest primary survivors; **not** counted as
   significance trials): `ema_filter {on,off}`, `fib_threshold {0.5,0.618}`, `be_at_2R {on,off}`,
-  `atr_mult {0.5,1.0,1.5}`, `swing_lookback k`, `entry_edge`, `direct_poi_source`, FVG/OB-POI.
+  `atr_mult {0.5,1.0,1.5}`, `swing_lookback k`, `entry_edge`, `direct_poi_source`,
+  `htf_target_mode {major_swing, nearest_swing}`, FVG/OB-POI.
 - Everything is **YAML-driven**; a config snapshot + seed is written per run.
 
 ---

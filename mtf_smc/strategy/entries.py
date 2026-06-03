@@ -43,7 +43,8 @@ def _htf_target(htf: TFView, ts: pd.Timestamp, direction: str, entry: float,
     """Frozen TP for HTF-level / scale modes: nearest opposing confirmed HTF swing beyond entry."""
     if cfg.tp_mode == "fixed_3R":
         return None
-    return htf.nearest_opposing_swing(ts, direction, beyond=entry)
+    return htf.nearest_opposing_swing(ts, direction, beyond=entry,
+                                      major=(cfg.htf_target_mode == "major_swing"))
 
 
 def _cascade(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
