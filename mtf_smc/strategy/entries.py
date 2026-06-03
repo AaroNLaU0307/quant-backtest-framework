@@ -23,7 +23,7 @@ from mtf_smc.config import StrategyConfig
 from mtf_smc.engine.trade import TradeSetup
 from mtf_smc.indicators.fib import FibLeg
 from mtf_smc.smc.structure import StructureEvent
-from mtf_smc.strategy.context import TFView, _assoc_fvg, build_context
+from mtf_smc.strategy.context import TFView, build_context
 
 
 def _overlap(a: Tuple[float, float], b: Tuple[float, float]) -> bool:
@@ -53,7 +53,7 @@ def _cascade(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
     setups: List[TradeSetup] = []
     for ev in ltf.structure:
         d = ev.direction
-        fvg = _assoc_fvg(ltf.fvgs, ev.index, d, cfg.fvg_assoc_window)
+        fvg = ltf.assoc_fvg(ev.index, d, cfg.fvg_assoc_window)
         if fvg is None:                                            # LTF trigger needs an FVG
             continue
         ts = ltf.close_time(ev.index)

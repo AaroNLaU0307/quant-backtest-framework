@@ -4,10 +4,15 @@ For each timeframe a config needs, we resample M1 (honouring the session anchor)
 causal detectors once: Wilder ATR, Vegas bias, swings, FVGs, BOS/CHoCH structure, and POIs. The
 :class:`TFView` then answers *as-of* questions — "what is known at time ``ts``?" — using each bar's
 close time (``bar_start + duration``), so callers never see an in-progress higher-TF bar.
+
+As-of lookups are backed by precomputed, sorted arrays + binary search (``np.searchsorted``) so the
+grid runner stays fast; the results are **identical** to a linear scan (verified by a bit-identical
+master-table diff and an equivalence unit test) — this is pure algorithmic speedup, no behaviour
+change and nothing skipped.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -37,8 +42,13 @@ class TFView:
     fvgs: List[FVG]
     structure: List[StructureEvent]
     pois: List[POI]
-    major_swings_high: List[Swing]      # larger-fractal swings (significant key levels)
+    major_swings_high: List[Swing]
     major_swings_low: List[Swing]
+    # Precomputed fast-lookup structures (per direction):
+    fvg_by_dir: Dict[str, List[FVG]] = field(default_factory=dict)
+    fvg_ci_by_dir: Dict[str, np.ndarray] = field(default_factory=dict)   # confirm indices, ascending
+    swf_events: Dict[str, List[StructureEvent]] = field(default_factory=dict)   # structure w/ assoc FVG
+    swf_ct: Dict[str, pd.DatetimeIndex] = field(default_factory=dict)           # their close-times
 
     # ------------------------------------------------------------------ #
     def latest_closed_pos(self, ts: pd.Timestamp) -> int:
@@ -51,6 +61,17 @@ class TFView:
     def bias_asof(self, ts: pd.Timestamp) -> str:
         pos = self.latest_closed_pos(ts)
         return self.bias[pos] if pos >= 0 else "none"
+
+    def assoc_fvg(self, event_index: int, direction: str, window: int) -> Optional[FVG]:
+        """Latest same-direction FVG confirming within ``[event_index - window, event_index]``."""
+        ci = self.fvg_ci_by_dir.get(direction)
+        if ci is None or ci.size == 0:
+            return None
+        left = int(np.searchsorted(ci, event_index - window, side="left"))
+        right = int(np.searchsorted(ci, event_index, side="right"))   # exclusive upper
+        if right <= left:
+            return None
+        return self.fvg_by_dir[direction][right - 1]                  # highest confirm_index in range
 
     def latest_poi_containing(self, ts: pd.Timestamp, direction: str, price: float) -> Optional[POI]:
         """Most recent same-direction POI, knowable by ``ts``, whose zone currently holds ``price``."""
@@ -66,13 +87,11 @@ class TFView:
 
     def latest_structure_with_fvg(self, ts: pd.Timestamp, direction: str) -> Optional[StructureEvent]:
         """Most recent same-direction BOS/CHoCH knowable by ``ts`` that has an associated FVG."""
-        out: Optional[StructureEvent] = None
-        for ev in self.structure:
-            if self.close_time(ev.index) > ts:
-                break
-            if ev.direction == direction and _assoc_fvg(self.fvgs, ev.index, direction, 12) is not None:
-                out = ev
-        return out
+        ct = self.swf_ct.get(direction)
+        if ct is None or len(ct) == 0:
+            return None
+        pos = int(ct.searchsorted(ts, side="right")) - 1
+        return self.swf_events[direction][pos] if pos >= 0 else None
 
     def nearest_opposing_swing(self, ts: pd.Timestamp, direction: str, beyond: float,
                                major: bool = False) -> Optional[float]:
@@ -97,18 +116,17 @@ class TFView:
 
 
 def _assoc_fvg(fvgs: List[FVG], event_index: int, direction: str, window: int) -> Optional[FVG]:
-    """Latest same-direction FVG confirming within ``[event_index - window, event_index]``."""
+    """Reference (linear) FVG association — kept for equivalence tests against :meth:`TFView.assoc_fvg`."""
     chosen: Optional[FVG] = None
     for f in fvgs:
-        if f.direction != direction:
-            continue
-        if event_index - window <= f.confirm_index <= event_index:
+        if f.direction == direction and event_index - window <= f.confirm_index <= event_index:
             chosen = f
     return chosen
 
 
 def build_tf_view(m1: pd.DataFrame, tf: str, cfg: StrategyConfig) -> TFView:
     df = resample_ohlc(m1, tf, anchor=cfg.session_anchor)
+    dur = tf_duration(tf)
     atr = atr_wilder(df, cfg.atr_period)
     bias = vegas_bias(df["close"], cfg.ema_fast, cfg.ema_slow).to_numpy()
     sh, sl = detect_swings(df, cfg.swing_lookback)
@@ -116,11 +134,28 @@ def build_tf_view(m1: pd.DataFrame, tf: str, cfg: StrategyConfig) -> TFView:
     fvgs = detect_fvgs(df, cfg.fvg_min_atr, atr)
     structure = detect_structure(df, cfg.swing_lookback)
     pois = build_pois(structure, fvgs, cfg.fvg_assoc_window)
-    return TFView(
-        tf=tf, df=df, dur=tf_duration(tf), close_times=df.index + tf_duration(tf),
-        atr=atr, bias=bias, swings_high=sh, swings_low=sl, fvgs=fvgs,
-        structure=structure, pois=pois, major_swings_high=major_sh, major_swings_low=major_sl,
+
+    # Per-direction FVG arrays (ascending confirm_index) for binary-search association.
+    fvg_by_dir: Dict[str, List[FVG]] = {"long": [], "short": []}
+    for f in fvgs:
+        fvg_by_dir[f.direction].append(f)
+    fvg_ci_by_dir = {d: np.array([f.confirm_index for f in fvg_by_dir[d]], dtype=np.int64)
+                     for d in ("long", "short")}
+
+    view = TFView(
+        tf=tf, df=df, dur=dur, close_times=df.index + dur, atr=atr, bias=bias,
+        swings_high=sh, swings_low=sl, fvgs=fvgs, structure=structure, pois=pois,
+        major_swings_high=major_sh, major_swings_low=major_sl,
+        fvg_by_dir=fvg_by_dir, fvg_ci_by_dir=fvg_ci_by_dir,
     )
+
+    # Structure events that have an associated FVG, per direction, with their close-times.
+    win = cfg.fvg_assoc_window
+    for d in ("long", "short"):
+        evs = [e for e in structure if e.direction == d and view.assoc_fvg(e.index, d, win) is not None]
+        view.swf_events[d] = evs
+        view.swf_ct[d] = pd.DatetimeIndex([df.index[e.index] + dur for e in evs])
+    return view
 
 
 def build_context(m1: pd.DataFrame, cfg: StrategyConfig) -> Dict[str, TFView]:
