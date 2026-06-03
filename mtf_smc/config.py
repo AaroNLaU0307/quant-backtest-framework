@@ -55,3 +55,55 @@ class DataConfig:
         """Build a config, picking up ``SMC_DATA_DIR`` for raw HistData rebuilds if set."""
         raw = os.environ.get("SMC_DATA_DIR")
         return cls(raw_data_dir=Path(raw) if raw else None)
+
+
+@dataclass(frozen=True)
+class StrategyConfig:
+    """One typed config for a single backtest run (no magic numbers; ``docs/SPEC.md`` §3-§6).
+
+    A single point in the parameter grid. The grid runner enumerates ``entry_model x htf x mtf x
+    ltf x tp_mode``; everything else has SPEC defaults and is varied only in ablations.
+    """
+
+    # --- grid axes ---
+    entry_model: str = "cascade"        # 'cascade' (A) | 'direct' (B)
+    htf: str = "D1"                     # {W1, D1}
+    mtf: str = "H1"                     # {H4, H1}
+    ltf: str = "M15"                    # {M15, M5, M1} (cascade only)
+    tp_mode: str = "fixed_3R"           # 'fixed_3R' | 'HTF_level' | 'scale_2R_then_HTF'
+
+    # --- SMC primitives ---
+    swing_lookback: int = 2
+    atr_period: int = 14
+    atr_mult: float = 0.5               # stop buffer in ATRs
+    fib_threshold: float = 0.5          # min pullback depth (discount/premium)
+    entry_edge: str = "near"            # FVG entry edge: 'near' | 'mid' | 'far'
+    fvg_min_atr: float = 0.10           # drop FVGs smaller than this * ATR
+    fvg_assoc_window: int = 12          # bars to associate an FVG with a structural break
+
+    # --- bias filter & management ---
+    ema_filter: bool = True
+    ema_bias_tf: str = "htf"            # which TF the Vegas bias reads: 'htf' | 'mtf'
+    ema_fast: int = 55
+    ema_slow: int = 144
+    be_at_2R: bool = True
+    be_buffer: float = 0.02             # price added past entry when moving to breakeven (~2 ticks)
+    risk_pct: float = 0.01              # fixed-fractional risk per trade
+    entry_expiry_bars: int = 24         # LTF bars a resting limit order lives
+    direct_poi_source: str = "htf_only"  # 'htf_only' | 'requires_mtf_shift' (model B)
+
+    # --- engine ---
+    tie_break: str = "stop_first"       # same-bar SL/TP resolution
+    session_anchor: str = "ny_close"    # D1/W1 anchor (mirrors DataConfig)
+    initial_equity: float = 100_000.0
+    seed: int = 7
+
+    @property
+    def detection_tfs(self) -> tuple:
+        """Distinct timeframes whose detectors this config needs (highest-first order preserved)."""
+        tfs = [self.htf, self.mtf] + ([self.ltf] if self.entry_model == "cascade" else [])
+        seen = []
+        for t in tfs:
+            if t not in seen:
+                seen.append(t)
+        return tuple(seen)

@@ -50,6 +50,10 @@ class CostModel:
     def commission_round_turn(self, lots: float) -> float:
         return self.instrument.commission_round_turn(lots) if self.apply_commission else 0.0
 
+    def commission_one_side(self, lots: float) -> float:
+        """Commission for a single side (entry or one exit/partial)."""
+        return self.instrument.commission_per_lot_per_side * lots if self.apply_commission else 0.0
+
     def swap(self, lots: float, direction: str, nights: int) -> float:
         return self.instrument.swap_for_nights(lots, direction, nights) if self.apply_swap else 0.0
 

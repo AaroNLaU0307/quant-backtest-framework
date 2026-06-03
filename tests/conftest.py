@@ -32,3 +32,15 @@ def m1_factory():
 def synth_m1():
     """A default 6-hour synthetic M1 frame."""
     return make_m1()
+
+
+@pytest.fixture(scope="session")
+def is_m1():
+    """Real in-sample M1 from the seeded cache (skips if the cache is absent)."""
+    from mtf_smc.config import DataConfig
+    from mtf_smc.data.loader import load_is
+
+    cfg = DataConfig()
+    if not cfg.cache_pickle.exists():
+        pytest.skip("seeded cache not present")
+    return load_is(cfg)
