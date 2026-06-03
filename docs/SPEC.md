@@ -331,17 +331,28 @@ histogram.
   terminal value is order-invariant under fixed-fractional, so this isolates drawdown) and (ii)
   **bootstrap** resample (composition risk). Report fan charts + percentiles for terminal equity,
   **max-DD distribution**, risk-of-ruin, and Sharpe. *MC characterizes risk; it does not validate edge.*
-- **Random-entry benchmark (the central EDGE/falsification test):** identical risk model, costs,
-  exit/management, and trade cadence (match N and holding-time distribution), with **randomized entry
-  timing/direction** over tradeable bars; ≥ 1,000 random strategies → null distribution of E[R] and
-  Sharpe. The strategy's edge is its **percentile vs. random**; if it sits inside the random cloud,
-  there is no edge.
+- **Random-entry benchmark (the central EDGE/falsification test) — TWO nulls:** identical risk
+  model, costs, and exit/management; match the strategy's trade cadence (N and holding-time
+  distribution). Run **≥ 1,000** random strategies per null:
+  - **(a) Unconstrained** — randomize entry timing **and** direction over tradeable bars.
+  - **(b) Bias-matched** — keep the strategy's **EMA-bias gating** (same per-bar direction/regime
+    permission) but randomize structural timing and **ignore POI / FVG / CHoCH**.
+  Report the strategy's **percentile against both**. The decomposition is a **primary result**:
+  beating (a) but **not** (b) ⇒ the edge is just the trend filter and the SMC structure adds nothing;
+  beating (b) ⇒ the SMC structure itself contributes. *(MC characterizes risk; random-entry tests edge.)*
 - **Bootstrap CIs** on expectancy and Sharpe; **significance** via bootstrap / t-test that mean R > 0
   with **p-values**; plus a **drop-1 (jackknife)** check (does the edge survive removing the single
   best trade?).
 - **Cost/fill sensitivity:** re-run headline configs under (a) the **high-slippage-on-stops** model
   (§6.5) and (b) the **optimistic TP-first** same-bar tie-break (§6.4), to show how much any apparent
   edge depends on cost/fill assumptions.
+- **Sharpe convention (explicit — DSR / PSR / BH-FDR all sit on it):** Sharpe and Sortino are
+  computed on **daily mark-to-market equity resampled to business days** (`B`, equity held flat
+  between trade exits); returns = daily pct-change; **annualized ×√252**; risk-free rate = 0. This is
+  deflated by the many flat days of a sparse-trade strategy but is consistent across configs. A
+  per-trade Sharpe (mean R / std R, annualized by √(trades·yr⁻¹)) is reported as a secondary view.
+  The **number of daily returns** and the **trial count (= 42)** are fed explicitly into DSR/PSR and
+  the BH-FDR threshold.
 - **Multiple-testing correction (mandatory):** **Benjamini–Hochberg FDR** across the **42** primary
   trials; **Deflated Sharpe Ratio** and **Probabilistic Sharpe Ratio** (Bailey & López de Prado) with
   the trial count fed in explicitly. State the **effective post-correction significance threshold**.

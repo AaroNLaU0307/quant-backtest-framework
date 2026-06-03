@@ -105,9 +105,33 @@ class StrategyConfig:
     @property
     def detection_tfs(self) -> tuple:
         """Distinct timeframes whose detectors this config needs (highest-first order preserved)."""
-        tfs = [self.htf, self.mtf] + ([self.ltf] if self.entry_model == "cascade" else [])
-        seen = []
+        if self.entry_model == "cascade":
+            tfs = [self.htf, self.mtf, self.ltf]
+        else:  # direct: HTF always; MTF only when the POI must be backed by an MTF shift
+            tfs = [self.htf] + ([self.mtf] if self.direct_poi_source == "requires_mtf_shift" else [])
+        seen: list = []
         for t in tfs:
             if t not in seen:
                 seen.append(t)
         return tuple(seen)
+
+    @property
+    def context_key(self) -> tuple:
+        """Identifies configs that share identical detection (so context can be cached/reused).
+
+        Excludes parameters that only affect setup geometry or trade management (tp_mode,
+        htf_target_mode, fib_threshold, entry_edge, be_*, risk, expiry, tie_break) — those are cheap
+        to re-evaluate and never change the detector outputs.
+        """
+        return (
+            self.entry_model, self.htf, self.mtf, self.ltf, self.direct_poi_source,
+            self.swing_lookback, self.major_swing_lookback, self.atr_period,
+            self.fvg_min_atr, self.fvg_assoc_window, self.ema_fast, self.ema_slow,
+            self.ema_bias_tf, self.session_anchor,
+        )
+
+    @property
+    def config_id(self) -> str:
+        if self.entry_model == "cascade":
+            return f"cascade_{self.htf}_{self.mtf}_{self.ltf}_{self.tp_mode}"
+        return f"direct_{self.htf}_{self.tp_mode}"
