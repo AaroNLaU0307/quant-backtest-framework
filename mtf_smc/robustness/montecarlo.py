@@ -48,6 +48,24 @@ def _pcts(x: np.ndarray) -> Dict[str, float]:
             "p75": float(q[3]), "p95": float(q[4])}
 
 
+def fan_chart_bands(
+    R: Sequence[float], risk_pct: float = 0.01, n_runs: int = 2000, seed: int = 7,
+    pcts: Tuple[int, ...] = (5, 25, 50, 75, 95),
+) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
+    """Bootstrap equity paths -> per-trade-step percentile bands for a Monte-Carlo fan chart."""
+    r = np.asarray(list(R), dtype=float)
+    r = r[~np.isnan(r)]
+    n = r.size
+    if n == 0:
+        return np.array([]), {}
+    rng = np.random.default_rng(seed)
+    paths = np.empty((n_runs, n))
+    for i in range(n_runs):
+        paths[i] = equity_path(r[rng.integers(0, n, size=n)], risk_pct)
+    bands = {f"p{p}": np.percentile(paths, p, axis=0) for p in pcts}
+    return np.arange(1, n + 1), bands
+
+
 def monte_carlo(
     R: Sequence[float],
     risk_pct: float = 0.01,
