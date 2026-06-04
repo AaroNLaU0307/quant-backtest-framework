@@ -46,8 +46,11 @@ phantom profit — we guard against them by design):**
 
 ### 1.1 Confirmed schema & timezone (verified by loading the cached pickle)
 - **Instrument:** XAUUSD (gold), M1 OHLC. No reliable volume (HistData volume ≡ 0; dropped).
-- **Available history on disk:** `2015-01-01 23:01` → `2023-12-29 21:57` **UTC**, 3,134,844 M1 bars,
-  columns `open, high, low, close` as `float64`, tz-aware UTC `DatetimeIndex`.
+- **Available history on disk:** full **`2015-01-01` → `2025-12-31` UTC**, 3,844,387 M1 bars
+  (`XAUUSD_M1_UTC_2015_2025.pkl` = IS 2015–2022 + OOS 2023–2025); columns `open, high, low, close` as
+  `float64`, tz-aware UTC `DatetimeIndex`. Integrity clean (0 NaN, 0 OHLC violations). 2015–2023 are
+  HistData XLSX; **2024–2025 are HistData MetaTrader CSV** (same fixed-EST source), ingested via
+  `scripts/ingest_oos_data.py`; the 2015–2022 IS slice is bit-identical to the original seed.
 - **Source & timezone provenance:** HistData.com per-year M1 `.xlsx` (no header, 6 cols:
   `datetime, open, high, low, close, volume=0`). HistData timestamps are **fixed EST (UTC−5, no
   DST)**; the verified loader localizes to fixed UTC−5 then converts to **UTC**. All internal logic
@@ -77,10 +80,11 @@ Resample M1 → **W1, D1, H4, H1, M15, M5, M1** with `label='left', closed='left
   walk-forward, Monte-Carlo, and parameter choices use **only** IS.
 - **Locked OOS:** `2023-01-01 → 2025-12-31`. Touched **exactly once**, at the very end, for the
   finalist config(s) only. Defined **by date**, so it auto-extends as 2024–2025 data is added.
-- Per your decision, you will **add HistData M1 for 2024–2025** (and ideally re-pull 2023). Until
-  then I build and run everything on IS = 2015–2022 and keep OOS sealed. The IS loader
-  **hard-slices to `≤ 2022-12-31`** so 2023+ rows cannot physically enter development — enforced
-  structurally (unit-tested), not by discipline. **Currently OOS would be
+- **OOS data now present (2024-12):** 2024–2025 HistData MT CSV ingested → full 2015–2025 cache, so
+  the locked OOS is the **full intended 3-year 2023–2025** window (2024/2025 are full ~354k-bar years;
+  2023 stays ~12% thin — flagged wherever it appears). It remains **sealed** until the step-6 one-shot;
+  the IS loader still **hard-slices to `≤ 2022-12-31`** so 2023+ rows cannot enter development
+  (structural, unit-tested), and all step-5 grid/robustness work uses IS only. **Currently OOS would be
   2023 only**, and 2023 is ~12% thin (308,752 bars vs ~353k/yr) — a caveat I will state wherever
   OOS appears. With 2024–2025 added, OOS becomes the full intended 3-year window.
 
@@ -340,6 +344,14 @@ histogram.
   Report the strategy's **percentile against both**. The decomposition is a **primary result**:
   beating (a) but **not** (b) ⇒ the edge is just the trend filter and the SMC structure adds nothing;
   beating (b) ⇒ the SMC structure itself contributes. *(MC characterizes risk; random-entry tests edge.)*
+  - **Edge metric is per-trade** — `E[R]` and **per-trade Sharpe = mean(R)/std(R)** — *not* daily
+    ×√252 Sharpe (which is cadence/holding-sensitive and would confound entry quality with frequency;
+    daily Sharpe is reserved for the within-grid DSR/PSR/BH-FDR where configs are homogeneous).
+  - **Moments held fixed:** N, the **stop-distance distribution**, the **holding-time distribution**
+    (each null trade's horizon bootstrapped from the strategy's holds; force-closed at that horizon if
+    its managed exit hasn't triggered), management + costs (the real FSM), and — for *bias_matched* —
+    the per-bar EMA permission + direction. **Randomized:** entry timing/location (+ direction for
+    *unconstrained*); POI/FVG/CHoCH ignored. Implemented in `robustness/random_entry.py`.
 - **Bootstrap CIs** on expectancy and Sharpe; **significance** via bootstrap / t-test that mean R > 0
   with **p-values**; plus a **drop-1 (jackknife)** check (does the edge survive removing the single
   best trade?).

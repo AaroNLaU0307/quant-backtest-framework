@@ -35,7 +35,7 @@ class DataConfig:
 
     data_cache_dir: Path = REPO_ROOT / "data_cache"
     raw_data_dir: Optional[Path] = None  # set to SMC_DATA_DIR to rebuild from HistData .xlsx
-    cache_pickle_name: str = "XAUUSD_M1_UTC_2015_2023.pkl"
+    cache_pickle_name: str = "XAUUSD_M1_UTC_2015_2025.pkl"  # full series; load_is hard-slices to <2023
 
     # Windows are half-open [start, end). is end == oos start == the hard slice boundary.
     is_start: pd.Timestamp = field(default_factory=lambda: _utc("2015-01-01"))

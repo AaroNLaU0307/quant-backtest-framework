@@ -40,3 +40,18 @@ def test_normalize_requires_all_ohlc_columns():
     df = pd.DataFrame({"open": [1.0, 1.0], "high": [1.0, 1.0], "close": [1.0, 1.0]}, index=idx)
     with pytest.raises(ValueError):
         normalize_ohlc(df)
+
+
+def test_read_mt_csv_parses_and_localizes_est():
+    import io
+
+    from mtf_smc.data.loader import EST_FIXED, read_mt_csv
+
+    data = ("2024.01.01,18:00,2062.598,2064.525,2062.405,2064.235,0\n"
+            "2024.01.01,18:01,2063.795,2064.135,2063.435,2064.125,0\n")
+    df = read_mt_csv(io.StringIO(data))
+    assert list(df.columns) == ["open", "high", "low", "close"]
+    assert df.index[0] == pd.Timestamp("2024-01-01 18:00")        # naive EST wall-clock
+    assert df["high"].iloc[0] == 2064.525
+    utc = df.index.tz_localize(EST_FIXED).tz_convert("UTC")        # 18:00 EST == 23:00 UTC
+    assert utc[0] == pd.Timestamp("2024-01-01 23:00", tz="UTC")

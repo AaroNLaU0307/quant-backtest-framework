@@ -53,6 +53,10 @@ def normalize_ohlc(df: pd.DataFrame, data_tz: str = "UTC") -> pd.DataFrame:
     for c in OHLC:
         out[c] = out[c].astype("float64")
 
+    if out[OHLC].isna().any().any():
+        n = int(out[OHLC].isna().any(axis=1).sum())
+        raise ValueError(f"OHLC contains {n} NaN row(s) — refusing to load (no silent repair).")
+
     bad = (
         (out["high"] < out["low"])
         | (out["high"] < out["open"]) | (out["high"] < out["close"])
@@ -96,6 +100,25 @@ def read_year_xlsx(path: str) -> pd.DataFrame:
         wb.close()
     return pd.DataFrame({"open": o, "high": h, "low": lo, "close": c},
                         index=pd.DatetimeIndex(ts))
+
+
+def read_mt_csv(source) -> pd.DataFrame:
+    """Read a HistData MetaTrader M1 CSV -> naive-EST-indexed DataFrame[open,high,low,close].
+
+    Format (no header): ``YYYY.MM.DD,HH:MM,open,high,low,close,volume``. ``source`` is a path or any
+    file-like/buffer. Timestamps are fixed EST (UTC-5, no DST) — localized by the caller, exactly as
+    for the .xlsx path. Volume (column 6) is ignored.
+    """
+    df = pd.read_csv(source, header=None,
+                     names=["date", "time", "open", "high", "low", "close", "volume"])
+    idx = pd.to_datetime(df["date"].astype(str) + " " + df["time"].astype(str), format="%Y.%m.%d %H:%M")
+    # Use .to_numpy() (positional) — passing the Series directly would re-align its RangeIndex
+    # against the new DatetimeIndex and silently produce all-NaN.
+    return pd.DataFrame(
+        {"open": df["open"].to_numpy(dtype=float), "high": df["high"].to_numpy(dtype=float),
+         "low": df["low"].to_numpy(dtype=float), "close": df["close"].to_numpy(dtype=float)},
+        index=pd.DatetimeIndex(idx),
+    )
 
 
 def load_m1_raw(raw_dir, symbol: str, years: Sequence[int], verbose: bool = True) -> pd.DataFrame:
