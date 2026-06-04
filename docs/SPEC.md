@@ -84,7 +84,10 @@ Resample M1 → **W1, D1, H4, H1, M15, M5, M1** with `label='left', closed='left
   the locked OOS is the **full intended 3-year 2023–2025** window (2024/2025 are full ~354k-bar years;
   2023 stays ~12% thin — flagged wherever it appears). It remains **sealed** until the step-6 one-shot;
   the IS loader still **hard-slices to `≤ 2022-12-31`** so 2023+ rows cannot enter development
-  (structural, unit-tested), and all step-5 grid/robustness work uses IS only. **Currently OOS would be
+  (structural, unit-tested), and all step-5 grid/robustness work uses IS only. The 2024–2025 ingest
+  was **hygiene only** (format/cache/integrity; no strategy contact; IS verified bit-identical).
+  **`REPORT.md` must state explicitly that OOS played no role in any parameter or methodology choice
+  prior to the final one-shot.** **Currently OOS would be
   2023 only**, and 2023 is ~12% thin (308,752 bars vs ~353k/yr) — a caveat I will state wherever
   OOS appears. With 2024–2025 added, OOS becomes the full intended 3-year window.
 
