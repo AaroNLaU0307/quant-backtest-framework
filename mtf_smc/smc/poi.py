@@ -10,8 +10,9 @@ pullback zone is assembled in the strategy layer, where the swing indices are av
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from mtf_smc.smc.fvg import FVG
@@ -52,17 +53,25 @@ def build_pois(
     The FVG must share the break's direction and confirm within ``[event_index - assoc_window,
     event_index]``. Events with no qualifying FVG produce no POI. ``fvgs`` is assumed ascending by
     ``confirm_index`` (as returned by :func:`mtf_smc.smc.fvg.detect_fvgs`).
+
+    Uses per-direction binary search (O(events·log F)) instead of an O(events·F) scan — identical
+    result (latest same-direction FVG in the window), but feasible at M1 scale. The naive scan was a
+    profiled hotspot (~315s building one M5 context); this makes it negligible.
     """
+    by_dir: Dict[str, List[FVG]] = {"long": [], "short": []}
+    for f in fvgs:
+        by_dir.setdefault(f.direction, []).append(f)
+    ci = {d: np.array([f.confirm_index for f in lst], dtype=np.int64) for d, lst in by_dir.items()}
+
     pois: List[POI] = []
     for e in events:
-        chosen: Optional[FVG] = None
-        for f in fvgs:
-            if f.direction != e.direction:
-                continue
-            if e.index - assoc_window <= f.confirm_index <= e.index:
-                chosen = f  # keep the latest qualifying FVG
-        if chosen is not None:
-            pois.append(POI(e.direction, e.kind, e.index, chosen))
+        arr = ci.get(e.direction)
+        if arr is None or arr.size == 0:
+            continue
+        left = int(np.searchsorted(arr, e.index - assoc_window, side="left"))
+        right = int(np.searchsorted(arr, e.index, side="right"))   # exclusive upper bound
+        if right > left:
+            pois.append(POI(e.direction, e.kind, e.index, by_dir[e.direction][right - 1]))
     return pois
 
 
