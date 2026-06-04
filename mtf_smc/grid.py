@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from mtf_smc.config import StrategyConfig
@@ -19,6 +20,10 @@ from mtf_smc.engine.backtester import BacktestResult, simulate
 from mtf_smc.engine.costs import CostModel
 from mtf_smc.metrics.performance import summarize_backtest
 from mtf_smc.risk.instrument import XAUUSD, InstrumentSpec
+from mtf_smc.robustness.stats import (
+    benjamini_hochberg, bootstrap_mean_ci, deflated_sharpe_ratio, drop_one_expectancy,
+    mean_positive_pvalue, probabilistic_sharpe_ratio, sharpe_inputs_from_equity,
+)
 from mtf_smc.strategy.context import build_context
 from mtf_smc.strategy.entries import generate_setups
 
@@ -70,9 +75,51 @@ def run_grid(
             "ltf": cfg.ltf if cfg.entry_model == "cascade" else "-", "tp_mode": cfg.tp_mode,
         }
         row.update(summarize_backtest(res))
+        row.update(_inference(res))
         rows.append(row)
         if verbose:
             print(f"[{i + 1:>2}/{len(configs)}] {cfg.config_id:<28} "
                   f"setups={res.n_setups:>4} trades={row['n_trades']:>4} "
                   f"E[R]={row['expectancy_R']:>+6.3f} sharpe={row['sharpe']:>+6.2f}")
     return pd.DataFrame(rows)
+
+
+def _inference(res: BacktestResult, n_boot: int = 5000) -> Dict[str, float]:
+    """Per-config inference inputs: expectancy CI, p-value, drop-1, and daily-Sharpe moments."""
+    nan = float("nan")
+    df = res.trades_df
+    if res.n_trades < 2:
+        return {"expectancy_ci_lo": nan, "expectancy_ci_hi": nan, "p_value": nan,
+                "drop_best_R": nan, "drop_best_delta": nan,
+                "sr_per_period": nan, "n_daily": 0, "ret_skew": nan, "ret_kurt": nan}
+    R = df["R"].to_numpy()
+    _, lo, hi = bootstrap_mean_ci(R, n_boot=n_boot, seed=res.config.seed)
+    d1 = drop_one_expectancy(R)
+    sr_pp, n_daily, skew, kurt = sharpe_inputs_from_equity(res.equity_curve)
+    return {"expectancy_ci_lo": lo, "expectancy_ci_hi": hi,
+            "p_value": mean_positive_pvalue(R, n_boot=n_boot, seed=res.config.seed),
+            "drop_best_R": d1["drop_best"], "drop_best_delta": d1["delta"],
+            "sr_per_period": sr_pp, "n_daily": n_daily, "ret_skew": skew, "ret_kurt": kurt}
+
+
+def apply_multiple_testing(df: pd.DataFrame, n_trials: Optional[int] = None,
+                           alpha: float = 0.05) -> pd.DataFrame:
+    """Add BH-FDR (reject/critical-p) and PSR/DSR columns across the grid (``docs/SPEC.md`` §8).
+
+    DSR deflates each config's PSR by the expected-max Sharpe over ``n_trials`` configs, using the
+    cross-config variance of the per-period Sharpe — so the bar rises with the breadth of the search.
+    """
+    out = df.copy()
+    n_trials = n_trials or len(out)
+    reject, crit = benjamini_hochberg(out["p_value"].fillna(1.0).to_numpy(), alpha)
+    out["bh_reject"] = reject
+    out["bh_crit_p"] = crit
+    sr = out["sr_per_period"].to_numpy()
+    sr_var = float(np.nanvar(sr, ddof=1)) if np.isfinite(sr).sum() > 1 else 0.0
+    out["psr"] = [probabilistic_sharpe_ratio(s, int(nn) if np.isfinite(nn) else 0, sk, ku)
+                  for s, nn, sk, ku in zip(out["sr_per_period"], out["n_daily"],
+                                           out["ret_skew"], out["ret_kurt"])]
+    out["dsr"] = [deflated_sharpe_ratio(s, int(nn) if np.isfinite(nn) else 0, sk, ku, n_trials, sr_var)
+                  for s, nn, sk, ku in zip(out["sr_per_period"], out["n_daily"],
+                                           out["ret_skew"], out["ret_kurt"])]
+    return out

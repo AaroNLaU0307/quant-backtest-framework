@@ -1,8 +1,10 @@
 """Primary-grid enumeration (exactly 42, correct composition) and a small runner smoke test."""
 from __future__ import annotations
 
+import pandas as pd
+
 from mtf_smc.config import StrategyConfig
-from mtf_smc.grid import enumerate_primary_grid, run_grid
+from mtf_smc.grid import apply_multiple_testing, enumerate_primary_grid, run_grid
 
 
 def test_primary_grid_is_42_with_right_composition():
@@ -36,6 +38,19 @@ def test_run_grid_small_smoke(is_m1):
     ]
     df = run_grid(sl, configs)
     assert len(df) == 3
-    for col in ("config_id", "n_trades", "expectancy_R", "sharpe", "max_drawdown_pct", "final_equity"):
+    for col in ("config_id", "n_trades", "expectancy_R", "sharpe", "max_drawdown_pct", "final_equity",
+                "p_value", "expectancy_ci_lo", "sr_per_period"):
         assert col in df.columns
     assert df["config_id"].is_unique
+
+
+def test_apply_multiple_testing():
+    df = pd.DataFrame({
+        "p_value": [0.001, 0.01, 0.04, 0.2, 0.5],
+        "sr_per_period": [0.10, 0.08, 0.05, 0.0, -0.02],
+        "n_daily": [500, 500, 500, 500, 500],
+        "ret_skew": [0.0] * 5, "ret_kurt": [3.0] * 5,
+    })
+    out = apply_multiple_testing(df, n_trials=5)
+    assert out["bh_reject"].tolist() == [True, True, False, False, False]   # matches the BH-FDR test
+    assert (out["dsr"] <= out["psr"] + 1e-9).all()                          # DSR deflates PSR

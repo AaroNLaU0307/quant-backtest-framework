@@ -88,6 +88,15 @@ def simulate(
     si = 0
 
     for i in range(n):
+        # Fast-path: a bar with no open position, no resting order, and no setup activating here is
+        # provably inert (nothing to fill, stop, invalidate, or manage) -> skipping its body is
+        # bit-identical to the naive loop (proven by the 2022 master-table MD5 + the loop tests).
+        # This is NOT idle-bar "event-jump": fills/stops/invalidations all require an active
+        # order/position, which is exactly what this guard checks for.
+        activating = si < len(setups) and decided_pos[si] == i
+        if not open_pos and not pending and not activating:
+            continue
+
         bar = Bar(o[i], h[i], lo[i], c[i])
         ts = idx[i]
 
