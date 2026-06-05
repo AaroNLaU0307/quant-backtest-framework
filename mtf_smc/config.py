@@ -116,7 +116,7 @@ class StrategyConfig:
     ema_fast: int = 55
     ema_slow: int = 144
     be_at_2R: bool = True
-    be_buffer: float = 0.02             # price added past entry when moving to breakeven (~2 ticks)
+    be_buffer: float = 0.02             # legacy/unused; BE buffer is per-instrument (InstrumentSpec.be_buffer_price)
     risk_pct: float = 0.01              # fixed-fractional risk per trade
     entry_expiry_bars: int = 24         # LTF bars a resting limit order lives
     direct_poi_source: str = "htf_only"  # 'htf_only' | 'requires_mtf_shift' (model B)

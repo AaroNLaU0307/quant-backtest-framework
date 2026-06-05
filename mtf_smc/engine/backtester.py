@@ -133,7 +133,7 @@ def simulate(
                     del pending[d]; continue
                 open_pos[d] = Position(
                     d, s.entry, lots, s.initial_stop, s.tp_mode, s.htf_target, ts, cost,
-                    be_at_2R=cfg.be_at_2R, be_buffer=cfg.be_buffer, tag=s.tag,
+                    be_at_2R=cfg.be_at_2R, tag=s.tag,   # be_buffer resolved per-instrument in Position
                 )
                 del pending[d]
 

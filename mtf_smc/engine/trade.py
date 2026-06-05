@@ -92,7 +92,7 @@ class Position:
         entry_ts: pd.Timestamp,
         cost: CostModel,
         be_at_2R: bool = True,
-        be_buffer: float = 0.02,
+        be_buffer: Optional[float] = None,   # None -> per-instrument InstrumentSpec.be_buffer_price
         tag: str = "",
     ) -> None:
         if direction not in ("long", "short"):
@@ -113,7 +113,7 @@ class Position:
         self.htf_target = htf_target
         self.entry_ts = entry_ts
         self.be_at_2R = be_at_2R
-        self.be_buffer = be_buffer
+        self.be_buffer = self.inst.be_buffer_price if be_buffer is None else float(be_buffer)
         self.tag = tag
         self.initial_risk_money = self.R_unit * self.mpu * self.lots_total
         self.gross_mid = 0.0
@@ -143,7 +143,7 @@ class Position:
         self.gross_mid += (exit_ref - self.entry_ref) * self.sgn * self.mpu * lots_p
         self.cost_spread += self.cost.half_spread * self.mpu * lots_p
         if reason in _STOP_REASONS:
-            self.cost_slippage += self.cost.stop_slippage_per_side * self.mpu * lots_p
+            self.cost_slippage += self.cost.eff_stop_slippage * self.mpu * lots_p
         self.cost_commission += self.cost.commission_one_side(lots_p)
         fill_px = (self.cost.stop_fill(exit_ref, self.direction) if reason in _STOP_REASONS
                    else self.cost.tp_fill(exit_ref, self.direction))

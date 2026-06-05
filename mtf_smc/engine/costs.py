@@ -9,6 +9,7 @@ swap accrues per night held.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 from mtf_smc.risk.instrument import InstrumentSpec
 
@@ -16,11 +17,25 @@ from mtf_smc.risk.instrument import InstrumentSpec
 @dataclass(frozen=True)
 class CostModel:
     instrument: InstrumentSpec
-    slippage_per_side: float = 0.05        # price units ($) for market entries
-    stop_slippage_per_side: float = 0.05   # price units ($) for stop exits (gold gaps on news)
+    # None -> use the per-instrument value from InstrumentSpec (so cost scale follows the instrument,
+    # never a gold-sized price on a 5-decimal FX pair). Explicit floats still override (e.g. 0.0).
+    slippage_per_side: Optional[float] = None       # market entries (price units)
+    stop_slippage_per_side: Optional[float] = None  # stop exits (price units; gaps on news)
     apply_spread: bool = True
     apply_commission: bool = True
     apply_swap: bool = True
+
+    @property
+    def eff_slippage(self) -> float:
+        """Market slippage per side (price), per-instrument unless explicitly overridden."""
+        return (self.instrument.base_slippage_price if self.slippage_per_side is None
+                else self.slippage_per_side)
+
+    @property
+    def eff_stop_slippage(self) -> float:
+        """Stop-exit slippage per side (price), per-instrument unless explicitly overridden."""
+        return (self.instrument.stop_slippage_price if self.stop_slippage_per_side is None
+                else self.stop_slippage_per_side)
 
     @property
     def half_spread(self) -> float:
@@ -40,7 +55,7 @@ class CostModel:
 
     def stop_fill(self, ref: float, direction: str) -> float:
         """Stop-exit fill (half-spread + stop slippage). Long exits by selling, short by buying."""
-        slip = self.stop_slippage_per_side
+        slip = self.eff_stop_slippage
         return self.sell_fill(ref, slip) if direction == "long" else self.buy_fill(ref, slip)
 
     def tp_fill(self, ref: float, direction: str) -> float:
@@ -58,12 +73,14 @@ class CostModel:
         return self.instrument.swap_for_nights(lots, direction, nights) if self.apply_swap else 0.0
 
 
-def high_slippage_on_stops(base: CostModel, stop_slippage: float = 0.50) -> CostModel:
-    """The SPEC §6.5/§8 sensitivity: only stop exits get a worse fill."""
+def high_slippage_on_stops(base: CostModel, mult: float = 10.0) -> CostModel:
+    """The SPEC §6.5/§8 sensitivity: only stop exits get a worse fill, ``mult`` x the per-instrument
+    stop slippage (gold 0.05 -> 0.50 at the default 10x, and it scales correctly for every instrument
+    instead of imposing a gold-sized price)."""
     return CostModel(
         instrument=base.instrument,
         slippage_per_side=base.slippage_per_side,
-        stop_slippage_per_side=stop_slippage,
+        stop_slippage_per_side=mult * base.eff_stop_slippage,
         apply_spread=base.apply_spread,
         apply_commission=base.apply_commission,
         apply_swap=base.apply_swap,

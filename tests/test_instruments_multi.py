@@ -55,6 +55,27 @@ def test_instrument_money_math_and_R(sym):
     assert r_i == pytest.approx(c2.realized_R)
     assert c2.realized_R < 3.0  # costs reduce it
 
+    # clean -1R stop-out: the stop exit must net ~ -1R with SMALL slippage. A gold-sized stop
+    # slippage applied to a 5-decimal pair made cost_slippage ~10R here (grid E[R] ~ -25R); this
+    # case exercises the stop path the +3R win never touches, and bounds it hard.
+    pos3 = Position("long", entry, lots, stop, "fixed_3R", None, TS0, cost, be_at_2R=False)
+    c3 = pos3.on_bar(Bar(entry, entry, stop, stop), TS1)   # bar low hits the stop exactly
+    assert c3 is not None and c3.exit_reason == "stop"
+    assert c3.cost_slippage < 0.25 * c3.initial_risk_money   # slippage << 1R
+    assert -1.6 < c3.realized_R < -1.0                       # ~ -1R after costs, never a blown multiple
+    net_i3, r_i3 = independent_net_and_R(c3, cost)
+    assert net_i3 == pytest.approx(c3.net_money)
+    assert r_i3 == pytest.approx(c3.realized_R)
+
+
+@pytest.mark.parametrize("sym", list(EXPECT))
+def test_cost_scales_are_instrument_relative(sym):
+    """Slippage in pips, BE buffer in ticks -- never a gold-sized absolute price on another pair."""
+    inst = get_instrument(sym)
+    assert 0 < inst.stop_slippage_price <= 5 * inst.pip_size, sym
+    assert 0 < inst.base_slippage_price <= 5 * inst.pip_size, sym
+    assert 0 < inst.be_buffer_price <= 5 * inst.tick_size, sym
+
 
 def test_registry_lookup():
     assert set(INSTRUMENTS) == {"XAUUSD", "EURUSD", "GBPUSD", "GBPJPY", "WTIUSD"}

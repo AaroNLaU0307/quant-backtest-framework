@@ -34,6 +34,9 @@ class InstrumentSpec:
     swap_short_per_lot: float = 0.0
 
     base_spread_price: float = 0.20      # full spread in PRICE units (see SPEC §6.5)
+    base_slippage_price: float = 0.05    # market slippage per side, PRICE units (gold default; ~0.5 pip)
+    stop_slippage_price: float = 0.05    # stop-exit slippage per side, PRICE units (gold gaps on news)
+    be_buffer_price: float = 0.02        # breakeven-stop buffer past entry, PRICE units (~2 ticks)
     quote_currency: str = "USD"
 
     @property
@@ -102,6 +105,8 @@ EURUSD = InstrumentSpec(
     commission_per_lot_per_side=3.5,   # $7 round-turn / lot (ECN)
     swap_long_per_lot=-0.5, swap_short_per_lot=-0.1,
     base_spread_price=0.00006,         # ~0.6 pip
+    base_slippage_price=0.00005, stop_slippage_price=0.00005,  # 0.5 pip per side
+    be_buffer_price=0.00002,           # ~2 ticks
     quote_currency="USD",
 )
 
@@ -112,6 +117,8 @@ GBPUSD = InstrumentSpec(
     commission_per_lot_per_side=3.5,
     swap_long_per_lot=-0.7, swap_short_per_lot=-0.2,
     base_spread_price=0.00009,         # ~0.9 pip
+    base_slippage_price=0.00005, stop_slippage_price=0.00005,  # 0.5 pip per side
+    be_buffer_price=0.00002,           # ~2 ticks
     quote_currency="USD",
 )
 
@@ -124,6 +131,8 @@ GBPJPY = InstrumentSpec(
     commission_per_lot_per_side=3.5,
     swap_long_per_lot=1.0, swap_short_per_lot=-3.5,   # GBP>JPY rates => positive long carry
     base_spread_price=0.015,           # ~1.5 pip
+    base_slippage_price=0.005, stop_slippage_price=0.005,  # 0.5 pip per side
+    be_buffer_price=0.002,             # ~2 ticks
     quote_currency="JPY",
 )
 
@@ -135,6 +144,8 @@ WTIUSD = InstrumentSpec(
     commission_per_lot_per_side=0.0,
     swap_long_per_lot=-3.0, swap_short_per_lot=-1.0,  # CFD overnight financing (placeholder)
     base_spread_price=0.04,            # ~4 cents
+    base_slippage_price=0.005, stop_slippage_price=0.005,  # 0.5 pip (half-cent) per side
+    be_buffer_price=0.02,              # ~2 ticks
     quote_currency="USD",
 )
 

@@ -38,6 +38,12 @@ def main() -> None:
               f"pip=${inst.pip_value_per_lot:g}/lot  spread={inst.base_spread_price:g}  "
               f"comm/side=${inst.commission_per_lot_per_side:g}")
         print(explain_trade(closed, cost))
+        stop_pos = Position("long", entry, lots, stop, "fixed_3R", None, TS0, cost, be_at_2R=False)
+        stopped = stop_pos.on_bar(Bar(entry, entry, stop, stop), TS1)   # clean -1R stop-out
+        print(f"  [-1R stop-out] R={stopped.realized_R:+.4f}  "
+              f"slippage=${stopped.cost_slippage:,.2f} "
+              f"({stopped.cost_slippage / stopped.initial_risk_money:.3f}R)  "
+              f"reason={stopped.exit_reason}")
         print()
 
 

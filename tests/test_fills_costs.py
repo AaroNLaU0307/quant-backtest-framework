@@ -47,7 +47,7 @@ def test_cost_fills_cross_spread_and_slippage():
 
 
 def test_high_slippage_on_stops_variant():
-    cm = high_slippage_on_stops(CostModel(XAUUSD), stop_slippage=0.50)
+    cm = high_slippage_on_stops(CostModel(XAUUSD), mult=10.0)       # 10 x 0.05 = 0.50 stop slippage
     assert cm.stop_fill(1995.0, "long") == pytest.approx(1994.40)   # 1995 - 0.10 - 0.50
     assert cm.entry_fill(2000.0, "long") == pytest.approx(2000.10)  # entries unchanged
 
