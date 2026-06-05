@@ -16,21 +16,28 @@ import pandas as pd
 
 from mtf_smc.config import REPO_ROOT, DataConfig
 from mtf_smc.data.loader import load_is
+from mtf_smc.engine.costs import CostModel
 from mtf_smc.grid import apply_multiple_testing, enumerate_primary_grid, run_grid
+from mtf_smc.risk.instrument import get_instrument
 
 pd.set_option("display.width", 200)
 pd.set_option("display.max_columns", 30)
 
 
 def main() -> None:
-    m1 = load_is(DataConfig())
+    symbol = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--symbol=")), "XAUUSD")
+    cfg = DataConfig.for_symbol(symbol)
+    inst = get_instrument(symbol)
+    m1 = load_is(cfg)
     slice_arg = next((a for a in sys.argv[1:] if ":" in a), None)
     if slice_arg:
         a, b = slice_arg.split(":")
         m1 = m1.loc[a:b]
     configs = enumerate_primary_grid()
 
-    out_dir = REPO_ROOT / "output" / "grid"
+    # XAUUSD keeps the original output/grid/ path (the bit-identical regression target);
+    # replication instruments write to output/grid/<symbol>/.
+    out_dir = REPO_ROOT / "output" / "grid" if symbol == "XAUUSD" else REPO_ROOT / "output" / "grid" / symbol
     out_dir.mkdir(parents=True, exist_ok=True)
     raw = out_dir / "master_raw.csv"
     prog = out_dir / "progress.log"
@@ -38,11 +45,12 @@ def main() -> None:
         for f in (raw, prog):
             f.unlink(missing_ok=True)
 
-    print(f"grid: {len(configs)} configs over {m1.index[0]} -> {m1.index[-1]} ({len(m1):,} M1 bars)")
+    print(f"grid [{symbol}]: {len(configs)} configs over {m1.index[0]} -> {m1.index[-1]} ({len(m1):,} M1 bars)")
     print(f"progress -> {prog}   (poll this file)\n")
 
     t0 = time.time()
-    df = run_grid(m1, configs, verbose=True, progress_file=prog, incremental_csv=raw)
+    df = run_grid(m1, configs, instrument=inst, cost=CostModel(inst),
+                  verbose=True, progress_file=prog, incremental_csv=raw)
     df = apply_multiple_testing(df, n_trials=len(configs))
     print(f"\ndone in {time.time() - t0:.0f}s")
 

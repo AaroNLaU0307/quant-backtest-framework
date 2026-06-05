@@ -24,6 +24,11 @@ def _utc(ts: str) -> pd.Timestamp:
     return pd.Timestamp(ts, tz="UTC")
 
 
+# Cache span per instrument: XAUUSD carries the sealed 2023-2025 OOS in its full-series pickle;
+# the replication instruments span 2015-2023 (their 2023 is OOS). Used by ``DataConfig.for_symbol``.
+_CACHE_SPAN: dict = {"XAUUSD": "2015_2025"}
+
+
 @dataclass(frozen=True)
 class DataConfig:
     """Data acquisition + in-sample / out-of-sample boundaries (all tz-aware UTC)."""
@@ -55,6 +60,26 @@ class DataConfig:
         """Build a config, picking up ``SMC_DATA_DIR`` for raw HistData rebuilds if set."""
         raw = os.environ.get("SMC_DATA_DIR")
         return cls(raw_data_dir=Path(raw) if raw else None)
+
+    @classmethod
+    def for_symbol(cls, symbol: str = "XAUUSD", **overrides) -> "DataConfig":
+        """Per-instrument data config (cache name derived from ``symbol``).
+
+        XAUUSD keeps the existing extended cache (full series to 2025, OOS 2023-2025); the other
+        instruments span 2015-2023 (2023 = their OOS). ``for_symbol("XAUUSD")`` is byte-for-byte the
+        same data config as ``DataConfig()`` / ``from_env()`` — the seam is purely additive, so the
+        XAUUSD path is unperturbed. ``SMC_DATA_DIR`` is honoured for raw rebuilds; the session anchor
+        (``ny_close``) and IS/OOS boundaries are shared (see ``docs/SPEC_multi_instrument.md`` §2,§4).
+        """
+        span = _CACHE_SPAN.get(symbol, "2015_2023")
+        raw = os.environ.get("SMC_DATA_DIR")
+        kw: dict = dict(
+            symbol=symbol,
+            cache_pickle_name=f"{symbol}_M1_UTC_{span}.pkl",
+            raw_data_dir=Path(raw) if raw else None,
+        )
+        kw.update(overrides)
+        return cls(**kw)
 
 
 @dataclass(frozen=True)
