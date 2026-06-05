@@ -1,4 +1,4 @@
-# Runtime + dev dependencies for the MTF-SMC XAUUSD backtest (V3).
+# Runtime + dev dependencies for the MTF-SMC multi-instrument backtest.
 # Developed and tested on Python 3.13.
 numpy>=1.24        # core arrays, Monte-Carlo / bootstrap resampling
 pandas>=2.1        # OHLC frames, tz-aware resample (2.x+ APIs)

@@ -86,3 +86,62 @@ XAUUSD = InstrumentSpec(
     base_spread_price=0.20,            # $0.20 full spread (half per side)
     quote_currency="USD",
 )
+
+# --------------------------------------------------------------------------- #
+# Multi-instrument specs (broker-typical retail placeholders; documented in docs/SPEC_multi_instrument.md §3).
+# Each derives money math from tick_value/tick_size; costs are configurable and disclosed in reports.
+# NOTE: every R is mostly invariant to the exact money-per-price-unit (it cancels between win and
+# stop) -- only the cost-to-R ratio depends on it -- which is why JPY-pair / commodity money math
+# need only be representative, not tick-perfect.
+# --------------------------------------------------------------------------- #
+
+# EUR/USD -- 5-decimal major: 100k/lot, pip 0.0001 = $10/lot, $1 move = $100k/lot.
+EURUSD = InstrumentSpec(
+    symbol="EURUSD",
+    pip_size=0.0001, tick_size=0.00001, tick_value=1.0, contract_size=100_000,
+    commission_per_lot_per_side=3.5,   # $7 round-turn / lot (ECN)
+    swap_long_per_lot=-0.5, swap_short_per_lot=-0.1,
+    base_spread_price=0.00006,         # ~0.6 pip
+    quote_currency="USD",
+)
+
+# GBP/USD -- 5-decimal major (slightly wider spread than EUR/USD).
+GBPUSD = InstrumentSpec(
+    symbol="GBPUSD",
+    pip_size=0.0001, tick_size=0.00001, tick_value=1.0, contract_size=100_000,
+    commission_per_lot_per_side=3.5,
+    swap_long_per_lot=-0.7, swap_short_per_lot=-0.2,
+    base_spread_price=0.00009,         # ~0.9 pip
+    quote_currency="USD",
+)
+
+# GBP/JPY -- 3-decimal JPY cross: pip 0.01; $1-yen move ~= 100k JPY / USDJPY(~120) ~= $833/lot.
+# tick_value 0.833 with tick_size 0.001 => money-per-price-unit ~= 833 (pip ~= $8.3/lot). Representative
+# fixed USDJPY (it ranged ~100-150 over 2015-2023); R is mpu-invariant except in the cost ratio.
+GBPJPY = InstrumentSpec(
+    symbol="GBPJPY",
+    pip_size=0.01, tick_size=0.001, tick_value=0.833, contract_size=100_000,
+    commission_per_lot_per_side=3.5,
+    swap_long_per_lot=1.0, swap_short_per_lot=-3.5,   # GBP>JPY rates => positive long carry
+    base_spread_price=0.015,           # ~1.5 pip
+    quote_currency="JPY",
+)
+
+# WTI crude CFD -- 2-decimal: 1 lot = 1,000 barrels; $1 move = $1,000/lot; tick 0.01 = $10/lot.
+# Spread-only (no commission), typical for retail crude CFDs.
+WTIUSD = InstrumentSpec(
+    symbol="WTIUSD",
+    pip_size=0.01, tick_size=0.01, tick_value=10.0, contract_size=1_000,
+    commission_per_lot_per_side=0.0,
+    swap_long_per_lot=-3.0, swap_short_per_lot=-1.0,  # CFD overnight financing (placeholder)
+    base_spread_price=0.04,            # ~4 cents
+    quote_currency="USD",
+)
+
+INSTRUMENTS = {s.symbol: s for s in (XAUUSD, EURUSD, GBPUSD, GBPJPY, WTIUSD)}
+
+
+def get_instrument(symbol: str) -> InstrumentSpec:
+    if symbol not in INSTRUMENTS:
+        raise KeyError(f"No InstrumentSpec for {symbol!r}; have {sorted(INSTRUMENTS)}")
+    return INSTRUMENTS[symbol]

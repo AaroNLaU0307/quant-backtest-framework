@@ -1,7 +1,7 @@
 """POI — point of interest: the FVG zone produced by the displacement that caused a BOS/CHoCH,
 plus causal mitigation tracking. ``docs/SPEC.md`` §2.6.
 
-V3's default POI is the qualifying **FVG inside the impulse leg** that produced a structural break,
+The default POI is the qualifying **FVG inside the impulse leg** that produced a structural break,
 associated to that break within ``assoc_window`` bars. A POI is **unmitigated** until price trades
 back into its zone; only unmitigated POIs are actionable. Mitigation is detected causally (the first
 bar at/after formation whose range intersects the zone). The impulse-leg Fib anchoring used for the

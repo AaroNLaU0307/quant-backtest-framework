@@ -1,7 +1,7 @@
 """ATR — Average True Range with Wilder's smoothing. Strictly causal (no look-ahead).
 
 ``docs/SPEC.md`` §2.8 standardizes on Wilder's RMA of True Range (the V2 detector used a plain SMA
-of TR; V3 upgrades to Wilder). ATR is NaN until ``period`` TRs exist; the seed is the SMA of the
+of TR; this project standardizes on Wilder). ATR is NaN until ``period`` TRs exist; the seed is the SMA of the
 first ``period`` TRs, then ``ATR[i] = (ATR[i-1]*(period-1) + TR[i]) / period``.
 """
 from __future__ import annotations

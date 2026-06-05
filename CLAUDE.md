@@ -1,12 +1,15 @@
-# CLAUDE.md — repo conventions (MTF-SMC XAUUSD backtest, V3)
+# CLAUDE.md — repo conventions (MTF-SMC multi-instrument backtest)
 
 Concise working agreement for this repo. The **authoritative strategy/methodology definitions live in
 [`docs/SPEC.md`](docs/SPEC.md)** — read it before changing detection, fills, or stats. The original
-mandate is [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md).
+mandate is [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md); the multi-instrument replication is
+specified in [`docs/SPEC_multi_instrument.md`](docs/SPEC_multi_instrument.md) and
+[`docs/PROJECT_BRIEF_multi_instrument.md`](docs/PROJECT_BRIEF_multi_instrument.md).
 
 ## What this project is
-A falsification-oriented, research-grade backtest of a multi-timeframe SMC price-action strategy on
-XAUUSD. **We do not tune toward profitability.** A clean negative result is a valid outcome. Favor
+A falsification-oriented, research-grade backtest of a multi-timeframe SMC price-action strategy —
+first on XAUUSD, then replicated across EURUSD/GBPUSD/GBPJPY/WTIUSD. **We do not tune toward
+profitability.** A clean negative result is a valid outcome. Favor
 correctness, statistical honesty, and reproducibility over flattering numbers.
 
 ## Non-negotiables (a change that violates these is wrong, however good the equity curve looks)

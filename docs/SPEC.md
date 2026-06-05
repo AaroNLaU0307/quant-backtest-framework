@@ -1,9 +1,10 @@
-# SPEC — Multi-Timeframe SMC Strategy Backtest on XAUUSD (V3)
+# SPEC — Multi-Timeframe SMC Strategy Backtest on XAUUSD
 
 **Status:** DRAFT — awaiting confirmation (Process §8.1 of the brief).
 **Authority:** This document governs implementation. Where it differs from
 [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md), the difference is intentional and the reason is recorded here.
-**Audience:** quant-research reviewers. English throughout (docs, comments, identifiers).
+**Audience:** quant-research reviewers. English throughout (docs, comments, identifiers). The
+multi-instrument extension is specified in [`SPEC_multi_instrument.md`](SPEC_multi_instrument.md).
 
 Every definition below is meant to be **concrete and unit-testable**. The validity of the whole
 study rests on these definitions, so each `🔧 DECISION` block states the default chosen and, where
@@ -18,15 +19,15 @@ Build a reproducible, **falsification-oriented** backtest that asks one question
 top-down, multi-timeframe SMC price-action strategy carry a statistically real edge on XAUUSD?* A
 clean negative result is a valid, valuable outcome. We never tune toward profitability.
 
-**Lineage (this is effectively V3 of a research arc):**
+**Lineage (prior independent studies in this research arc):**
 
 | | Paradigm | Verdict tool | Result |
 |---|---|---|---|
 | V1 (separate repo) | Subjective SMC price-action | Walk-forward OOS | No robust edge (OOS E[R] negative) |
 | V2 (`…/Algorithmic Trading System - V2`) | Objective Donchian breakout | Monte-Carlo + controlled experiments | No confirmable edge (all CIs cross 0) |
-| **V3 (this project)** | **Structured MTF-SMC cascade grid** | **Grid + BH-FDR/DSR/PSR + random-entry falsification + locked OOS** | *To be determined — honestly* |
+| **This project** | **Structured MTF-SMC cascade grid** | **Grid + BH-FDR/DSR/PSR + random-entry falsification + locked OOS** | **No confirmable edge (0/42 survive correction)** |
 
-V3's contribution over V1/V2: a **pre-registered grid** of structural variants tested with
+This project's contribution over the prior studies: a **pre-registered grid** of structural variants tested with
 **multiple-testing correction**, a **random-entry benchmark** as the central edge test, **intrabar
 M1 fill resolution**, and a **locked 2023–2025 OOS** touched exactly once.
 
@@ -36,7 +37,7 @@ phantom profit — we guard against them by design):**
   side of entry and booked losses as TP wins. → The `HTF_level` TP here is **fixed at entry from
   already-confirmed structure** (§6.3, §7.4).
 - A **circuit-breaker with no reset** silently truncated multi-year runs. → No silent equity guards
-  in V3; any halt logic is explicit, tested, and logged (§6.4).
+  here; any halt logic is explicit, tested, and logged (§6.4).
 - **Point estimates lie / returns are tail-driven.** → Every headline carries a bootstrap CI and a
   **drop-1 (jackknife) sensitivity** (§8).
 
@@ -104,7 +105,7 @@ rollover-like jumps). Output: `data/quality_report.{md,csv}` + a bars-per-year/g
   converts EST→UTC, dedupes, caches to `data_cache/XAUUSD_M1_UTC_<first>_<last>.pkl`.
 - **Licensed data is never committed.** The repo ships the loader, this schema, and a **tiny
   synthetic sample** for smoke tests. A `run_demo` on synthetic data needs no download.
-- 🔧 **DECISION (confirmed):** seed V3's `data_cache/` by copying the V2
+- 🔧 **DECISION (confirmed):** seed this project's `data_cache/` by copying the V2
   `XAUUSD_M1_UTC_2015_2023.pkl` so IS work starts immediately. **The IS loader hard-slices the series
   to `≤ 2022-12-31`** before any development use, so 2023 OOS rows cannot leak in — a structural
   guarantee, unit-tested, not reliant on discipline. The full (unsliced) series loads only in the
@@ -168,11 +169,11 @@ For an **impulse leg** with protected extreme `P` and impulse extreme `X` (long:
 - **Convention (disambiguates BOS vs CHoCH):** *HTF/MTF use **BOS** to set direction; the entry
   trigger inside the POI uses **CHoCH** (the close that ends the pullback and resumes the HTF-bias
   direction).* The two are not interchanged. The reusable detector returns a generic structural
-  break; V3 labels it BOS vs CHoCH from the prevailing-direction context.
+  break; the structure machine labels it BOS vs CHoCH from the prevailing-direction context.
 
 ### 2.6 POI (point of interest)
 - The **FVG / order block / supply-demand zone produced by the displacement that caused the
-  BOS/CHoCH.** V3 default POI = the qualifying **FVG inside the impulse leg** that produced the
+  BOS/CHoCH.** The default POI = the qualifying **FVG inside the impulse leg** that produced the
   structural break (associated to the break within `fvg_assoc_window` bars). Order-block variant
   (last opposing candle before the impulse; zone `[open, low]` long / `[high, open]` short,
   `ob_use_wick` optional) is available but **off by default** to keep the primary grid lean.
@@ -189,7 +190,7 @@ For an **impulse leg** with protected extreme `P` and impulse extreme `X` (long:
 
 ### 2.8 ATR
 - 🔧 **DECISION:** `ATR(14)` using **Wilder's RMA of True Range** (standard). *Note:* the ported
-  detector used an SMA-of-TR; V3 standardizes on Wilder and unit-tests the recursion as strictly
+  detector used an SMA-of-TR; this project standardizes on Wilder and unit-tests the recursion as strictly
   causal. Used for: FVG size filter, stop buffer, displacement scaling, regime classification.
 
 ---
@@ -397,12 +398,12 @@ distribution; YAML grids in root `configs/`, runnable entry points in `scripts/`
 - `data_loader.py` (HistData EST→UTC, dedupe, cache) → `data/`.
 - `data_handler.py` (MTF `shift(1)` alignment + `closed_asof`) → `engine/` alignment layer.
 - `smc_structure.py` primitives (`detect_swings`, `detect_fvgs`, `_latest_confirmed_swing`,
-  MSS/CHoCH) → `smc/`. The extra TK-style CB/DB modes are **not** part of V3's primary definitions
+  MSS/CHoCH) → `smc/`. The extra TK-style CB/DB modes are **not** part of this project's primary definitions
   (available only as an ablation).
 - `fib.py` (leg retracement/extension) → `indicators/` or `smc/`.
 - `instrument.py` (`InstrumentSpec` money math, XAUUSD spec) → `risk/`.
-- Conceptual reuse (rebuilt to V3's grid/stats): Monte-Carlo, analytics/CIs, walk-forward.
-**Net-new in V3:** the cascade/direct entry models A/B, the 42-config grid runner, intrabar M1 fill
+- Conceptual reuse (rebuilt to this project's grid/stats): Monte-Carlo, analytics/CIs, walk-forward.
+**Net-new here:** the cascade/direct entry models A/B, the 42-config grid runner, intrabar M1 fill
 engine, random-entry benchmark, BH-FDR + DSR + PSR, locked-OOS harness, reporting/heatmaps, REPORT.md.
 
 **Reproducibility:** fixed RNG seeds, per-run config+seed snapshot, `requirements.txt`/`pyproject.toml`,

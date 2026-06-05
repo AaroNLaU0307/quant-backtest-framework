@@ -24,8 +24,8 @@ costs and proven no-look-ahead:
   no-edge conclusion stands.
 
 > A "+0.62R, PF 2.0, it works out-of-sample!" headline is exactly what this study is built to *not*
-> fall for. Surfacing why it's noise — and reproducing V1's and V2's verdict by a third independent
-> route — is the point.
+> fall for. Surfacing why it's noise — the same null that two prior independent studies reached — is
+> the point.
 
 ![Grid expectancy heatmap](assets/grid_expectancy_heatmap.png)
 
@@ -66,11 +66,12 @@ acquisition; a tiny synthetic sample drives the no-download tests.
 |---|---|---|---|
 | V1 | Subjective SMC price-action | Walk-forward OOS | No robust edge |
 | V2 | Objective Donchian breakout | Monte-Carlo + experiments | No confirmable edge |
-| **V3 (this repo)** | **Structured MTF-SMC grid** | **BH-FDR/DSR + random-entry + locked OOS** | **No confirmable edge** |
+| **This project (single-instrument)** | **Structured MTF-SMC grid** | **BH-FDR/DSR + random-entry + locked OOS** | **No confirmable edge** |
 
 Three paradigms, three lenses, the same conclusion: **single-instrument trend/structure alpha on gold
 is too thin to confirm** — which is *why* professional trend-following is multi-asset and diversified.
-That is the natural next direction.
+Pursuing that multi-instrument replication — does any config's edge survive across independent
+instruments after correction? — is the current direction of this project.
 
 ## Limitations & disclaimer
 Single instrument; modelled (not historical) spread/slippage; SMC discretion operationalized into one
