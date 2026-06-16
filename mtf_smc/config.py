@@ -161,3 +161,16 @@ class StrategyConfig:
         if self.entry_model == "cascade":
             return f"cascade_{self.htf}_{self.mtf}_{self.ltf}_{self.tp_mode}"
         return f"direct_{self.htf}_{self.tp_mode}"
+
+    @classmethod
+    def legacy_d1h1m5(cls) -> "StrategyConfig":
+        """The published single-instrument repo's setup, runnable on THIS engine: a fixed
+        D1->H1->M5 cascade at 0.5% risk, targeting the nearest significant HTF liquidity.
+
+        Part of the merge (docs/MERGE_PLAN.md): lets the unified engine reproduce the old strategy's
+        timeframe/risk configuration. The old hybrid-Fib TP and the strategy/risk machinery (session
+        filters, confluence, portfolio risk + circuit breakers) are ported as off-by-default ablations
+        in merge phase M2; here the TP is the nearest-liquidity HTF target — its closest existing analog.
+        """
+        return cls(entry_model="cascade", htf="D1", mtf="H1", ltf="M5",
+                   tp_mode="HTF_level", htf_target_mode="major_swing", risk_pct=0.005)
