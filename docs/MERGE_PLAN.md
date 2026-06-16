@@ -21,9 +21,13 @@ its strategy/risk machinery are **ported onto this engine**, then the old packag
    unified-engine walk-forward can faithfully reproduce the old strategy and (b) the institutional risk
    machinery is available as a feature. Off-by-default ⇒ the committed 42-config grid stays
    **bit-identical** (re-verified each phase).
-4. **Three-lens narrative.** One SMC strategy, falsified independently by: **(L1)** walk-forward OOS
-   (optimize-IS → test-OOS), **(L2)** multiple-testing-corrected multi-instrument replication, **(L3)**
-   two-null random-entry edge benchmark.
+4. **Three-lens narrative — distinct questions, no overlap.** One SMC strategy, falsified independently
+   by: **(L1)** walk-forward OOS = the *overfitting* test, optimizing over the **continuous old
+   detection-threshold space** on fixed D1->H1->M5; **(L2)** *multiple-testing-corrected multi-instrument
+   replication* over the **pre-registered 42-config grid**; **(L3)** *two-null random-entry* edge
+   benchmark. The lenses stay disjoint: WF is **never** run as an optimizer over the pre-registered
+   42-grid (those are L2's confirmatory, BH-FDR-corrected set; optimizing over them and picking winners
+   would violate the pre-registration and blur L1 into L2).
 
 ## Source of the old code
 The local `Algorithmic Trading System` working tree is **ahead of the published 1-commit repo** by a
@@ -33,9 +37,11 @@ independently verified — but logic is sourced from the corrected local version
 
 ## Explicitly out of scope
 - **`multi_asset_tsmom/`** (separate standalone project) — NOT merged.
-- **TSMOM in this repo** = `scripts/run_momentum_control.py` only. NOT folded into the SMC narrative.
-  Pending your decision: keep it as a labeled *power-calibration control* for the falsification method,
-  or split it out. Until you decide, it stays as-is, clearly labeled, outside the three-lens story.
+- **TSMOM in this repo** = `scripts/run_momentum_control.py`, **kept** but labeled strictly as a
+  *power-calibration control* for the falsification method (it shows the framework detects a weak
+  positive on a known-effective strategy, so the "SMC = no edge" verdict is not an artifact of an
+  over-strict harness). It is **not** a TSMOM strategy, stays distinct from the separate
+  `multi_asset_tsmom/` project, and stays outside the three-lens SMC narrative.
 
 ## Phased execution (each phase: tested, bit-identical-checked, committed on `merge-unify`)
 - **M0 — Setup.** Branch + this spec. ✅
@@ -52,12 +58,15 @@ independently verified — but logic is sourced from the corrected local version
     backtest loop** over aligned multi-instrument bars. Flagged as the biggest single item — sequenced
     last, behind a `run_portfolio` entry point; the per-instrument grid path is untouched.
 - **M3 — Analyses port.** (i) 1D/2D **parameter-sensitivity scan** on the new engine
-  (`robustness/sensitivity.py` + `scripts/run_sensitivity.py`); (ii) **optimize-IS → test-OOS
-  walk-forward** (`robustness/walkforward.py` gains the optimizing variant + `scripts/run_walkforward.py`).
-  Optimization space = the unified parameter space (new grid axes + ported old knobs).
+  (`robustness/sensitivity.py` + `scripts/run_sensitivity.py`); (ii) **optimize-IS -> test-OOS
+  walk-forward** (`robustness/walkforward.py` gains the optimizing variant + `scripts/run_walkforward.py`),
+  optimizing **only over the old detection-threshold space on fixed D1->H1->M5** — the faithful L1
+  re-run. It is **not** run over the pre-registered 42-grid (decision 4): a single WF variant, the
+  overfitting test.
 - **M4 — Re-run on the unified engine.** Run the old strategy preset (D1/H1/M5 @ 0.5% + machinery)
-  through the new engine for: optimizing walk-forward (→ the updated OOS figure), sensitivity, stratified
-  /regime. Report updated numbers honestly; archive the old −0.27R as an earlier-engine footnote.
+  through the new engine for: the **L1 optimizing walk-forward** (-> the updated OOS figure that replaces
+  -0.27R), the sensitivity scan, and stratified/regime. Report updated numbers honestly; archive the old
+  -0.27R as an earlier-engine footnote.
 - **M5 — Docs unification.** One README leading with the three lenses; merge SPEC + briefs; retire the
   `smc_mtf/` narrative; update reproduction commands; one honest prior-work lineage paragraph.
 
