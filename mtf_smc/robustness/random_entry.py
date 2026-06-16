@@ -84,7 +84,7 @@ def _resolve_trade(o, h, l, c, index, j: int, direction: str, entry_ref: float, 
     if lots <= 0:
         return None
     pos = Position(direction, entry_ref, lots, stop, tp_mode, htf_target, index[j], cost,
-                   be_at_2R=cfg.be_at_2R, tag="rand")   # be_buffer resolved per-instrument in Position
+                   be_at_2R=cfg.be_at_2R, be_trigger_R=cfg.be_trigger_R, tag="rand")
     end = min(len(c), j + 1 + min(max_hold, _SAFETY_CAP_BARS))
     for k in range(j + 1, end):
         closed = pos.on_bar(Bar(o[k], h[k], l[k], c[k]), index[k])

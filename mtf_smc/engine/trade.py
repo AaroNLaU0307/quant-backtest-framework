@@ -93,6 +93,7 @@ class Position:
         cost: CostModel,
         be_at_2R: bool = True,
         be_buffer: Optional[float] = None,   # None -> per-instrument InstrumentSpec.be_buffer_price
+        be_trigger_R: float = 2.0,           # move stop to breakeven once +be_trigger_R is reached
         tag: str = "",
     ) -> None:
         if direction not in ("long", "short"):
@@ -114,6 +115,7 @@ class Position:
         self.entry_ts = entry_ts
         self.be_at_2R = be_at_2R
         self.be_buffer = self.inst.be_buffer_price if be_buffer is None else float(be_buffer)
+        self.be_trigger_R = float(be_trigger_R)
         self.tag = tag
         self.initial_risk_money = self.R_unit * self.mpu * self.lots_total
         self.gross_mid = 0.0
@@ -135,8 +137,9 @@ class Position:
         return self.entry + self.sgn * 2.0 * self.R_unit
 
     def _tp_target(self) -> Optional[float]:
-        if self.tp_mode == "fixed_3R":
-            return self.entry + self.sgn * 3.0 * self.R_unit
+        if self.tp_mode.startswith("fixed_") and self.tp_mode.endswith("R"):
+            mult = float(self.tp_mode[6:-1])              # 'fixed_3R' -> 3.0, 'fixed_1R' -> 1.0
+            return self.entry + self.sgn * mult * self.R_unit
         return self.htf_target
 
     def _book(self, lots_p: float, exit_ref: float, ts: pd.Timestamp, reason: str) -> None:
@@ -182,7 +185,14 @@ class Position:
             self._book(self.remaining, self.stop, ts, reason)
             return self._finalize(ts, reason)
 
-        # 2) +2R event: scale-out and/or breakeven
+        # 2a) breakeven trigger at +be_trigger_R (default 2R reproduces the original behaviour exactly:
+        #     scale books at the fixed 2R price independent of the stop, so set-BE-then-scale and
+        #     scale-then-set-BE give the identical same-bar result).
+        if self.be_at_2R and not self.be_done and self._profit(fav) >= self.be_trigger_R * self.R_unit - 1e-9:
+            self.stop = self.entry + self.sgn * self.be_buffer
+            self.be_done = True
+
+        # 2b) +2R event: scale-out (the scale-out leg is defined at 2R by the tp_mode)
         if not self.twoR_done and self._profit(fav) >= 2.0 * self.R_unit - 1e-9:
             self.twoR_done = True
             if self.tp_mode == "scale_2R_then_HTF" and not self.scaled:
@@ -190,9 +200,6 @@ class Position:
                 if 0 < half < self.remaining:
                     self._book(half, self._two_r_price(), ts, "scale_2R")
                     self.scaled = True
-            if self.be_at_2R:
-                self.stop = self.entry + self.sgn * self.be_buffer
-                self.be_done = True
 
         # 3) take-profit
         tp = self._tp_target()

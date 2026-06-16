@@ -116,6 +116,7 @@ class StrategyConfig:
     ema_fast: int = 55
     ema_slow: int = 144
     be_at_2R: bool = True
+    be_trigger_R: float = 2.0           # move stop to breakeven once price reaches +be_trigger_R (2R default)
     be_buffer: float = 0.02             # legacy/unused; BE buffer is per-instrument (InstrumentSpec.be_buffer_price)
     risk_pct: float = 0.01              # fixed-fractional risk per trade
     entry_expiry_bars: int = 24         # LTF bars a resting limit order lives
