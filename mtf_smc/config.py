@@ -109,6 +109,7 @@ class StrategyConfig:
     # HTF_level / scale TP target: which opposing HTF swing to aim for.
     htf_target_mode: str = "major_swing"   # 'major_swing' (significant key level, high R:R) | 'nearest_swing'
     major_swing_lookback: int = 5          # larger fractal => fewer, more significant HTF swings
+    fib_ext_tp: float = 4.236              # hybrid_fib TP: impulse-leg extension target (ported; off-grid)
 
     # --- bias filter & management ---
     ema_filter: bool = True

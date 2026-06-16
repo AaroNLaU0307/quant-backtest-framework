@@ -39,12 +39,25 @@ def _fib_leg(ev: StructureEvent) -> Optional[FibLeg]:
 
 
 def _htf_target(htf: TFView, ts: pd.Timestamp, direction: str, entry: float,
-                cfg: StrategyConfig) -> Optional[float]:
-    """Frozen TP for HTF-level / scale modes: nearest opposing confirmed HTF swing beyond entry."""
-    if cfg.tp_mode == "fixed_3R":
+                cfg: StrategyConfig, leg: Optional[FibLeg] = None) -> Optional[float]:
+    """Frozen TP for HTF-level / scale / hybrid_fib modes; None for any fixed-R (the FSM computes those).
+
+    ``hybrid_fib`` (ported from the old single-instrument repo, off-by-default): the **nearer** of the
+    nearest opposing HTF liquidity and the impulse leg's ``fib_ext_tp`` (4.236) extension — whichever
+    price is reached first. Existing modes are unchanged (HTF_level/scale -> swing), so the 42-grid is
+    bit-identical.
+    """
+    if cfg.tp_mode.startswith("fixed_"):
         return None
-    return htf.nearest_opposing_swing(ts, direction, beyond=entry,
-                                      major=(cfg.htf_target_mode == "major_swing"))
+    swing = htf.nearest_opposing_swing(ts, direction, beyond=entry,
+                                       major=(cfg.htf_target_mode == "major_swing"))
+    if cfg.tp_mode == "hybrid_fib":
+        ext = leg.extension(cfg.fib_ext_tp) if leg is not None else None
+        cands = [t for t in (swing, ext) if t is not None]
+        if not cands:
+            return None
+        return min(cands) if direction == "long" else max(cands)   # nearer-to-entry target hits first
+    return swing
 
 
 def _cascade(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
@@ -82,7 +95,7 @@ def _cascade(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
             continue
         setups.append(TradeSetup(
             direction=d, entry=entry, initial_stop=float(stop), tp_mode=cfg.tp_mode,
-            htf_target=_htf_target(htf, ts, d, entry, cfg), decided_ts=ts,
+            htf_target=_htf_target(htf, ts, d, entry, cfg, leg=leg), decided_ts=ts,
             expiry_ts=ts + cfg.entry_expiry_bars * ltf.dur,
             invalidation=float(poi.lower if d == "long" else poi.upper),
             tag=f"cascade_{ev.kind}",
