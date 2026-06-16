@@ -43,37 +43,37 @@ independently verified — but logic is sourced from the corrected local version
   over-strict harness). It is **not** a TSMOM strategy, stays distinct from the separate
   `multi_asset_tsmom/` project, and stays outside the three-lens SMC narrative.
 
-## Phased execution (each phase: tested, bit-identical-checked, committed on `merge-unify`)
-- **M0 — Setup.** Branch + this spec. ✅
-- **M1 — Config unification.** Translate the old strategy/risk/filter/exit/exec params into the new
-  typed config as **off-by-default** English fields (a `legacy`/ablation section). Add a named preset
-  `StrategyConfig.legacy_d1h1m5()` = the old fixed **D1→H1→M5 @ 0.5%** setup. No behaviour change yet.
-- **M2 — Strategy/risk machinery port** (the large phase; wire the M1 knobs to logic):
-  - **M2a** hybrid-Fib TP (`min(4.236·leg, nearest D1 liquidity)`) as a `tp_mode`; OB/Breaker POI types;
-    TK CB/DB break detectors; confluence scoring. (Single-position; bit-identical-safe off by default.)
-  - **M2b** execution filters: session (Asia block + GBPJPY exception), spread, news-blackout interface.
-  - **M2c** ⚠️ **Portfolio-level risk = architectural.** The new engine runs **one instrument at a time**
-    (the grid); the old ran a **simultaneous multi-instrument portfolio** (correlation-group caps,
-    daily/consecutive-loss circuit breakers, shared ledger). Porting this needs a new **portfolio
-    backtest loop** over aligned multi-instrument bars. Flagged as the biggest single item — sequenced
-    last, behind a `run_portfolio` entry point; the per-instrument grid path is untouched.
-- **M3 — Analyses port.** (i) 1D/2D **parameter-sensitivity scan** on the new engine
-  (`robustness/sensitivity.py` + `scripts/run_sensitivity.py`); (ii) **optimize-IS -> test-OOS
-  walk-forward** (`robustness/walkforward.py` gains the optimizing variant + `scripts/run_walkforward.py`),
-  optimizing **only over the old detection-threshold space on fixed D1->H1->M5** — the faithful L1
-  re-run. It is **not** run over the pre-registered 42-grid (decision 4): a single WF variant, the
-  overfitting test.
-- **M4 — Re-run on the unified engine.** Run the old strategy preset (D1/H1/M5 @ 0.5% + machinery)
-  through the new engine for: the **L1 optimizing walk-forward** (-> the updated OOS figure that replaces
-  -0.27R), the sensitivity scan, and stratified/regime. Report updated numbers honestly; archive the old
-  -0.27R as an earlier-engine footnote.
-- **M5 — Docs unification.** One README leading with the three lenses; merge SPEC + briefs; retire the
-  `smc_mtf/` narrative; update reproduction commands; one honest prior-work lineage paragraph.
+## Phased execution — RE-ORDERED: the updated walk-forward number lands BEFORE the portfolio loop
+**Rationale:** the L1 walk-forward is a *single-instrument overfitting test*; it needs only the detection
+layer + filters, **not** the multi-instrument portfolio loop (portfolio-layer risk is irrelevant to it).
+So M2c is deferred to last, off the three-lens critical path. Each step: tested, bit-identical-checked,
+committed on `merge-unify`.
+
+**Done:** **M0** (branch + spec) · **M1** (`StrategyConfig.legacy_d1h1m5()` preset) · **M2a-hybrid**
+(hybrid-Fib TP, bit-identical-verified). **Resume order:**
+
+1. **M2a (cont.) — detection layer** (off-by-default, each bit-identical-checked): OB/Breaker POI types;
+   TK-style CB/DB break detectors; confluence scoring. *(hybrid-Fib TP already done.)*
+2. **M2b — execution filters:** session (Asia block + GBPJPY exception), spread, news-blackout interface.
+3. **M3 — analyses:** 1D/2D parameter-sensitivity scan (`robustness/sensitivity.py` +
+   `scripts/run_sensitivity.py`); the **L1 optimize-IS -> test-OOS walk-forward**
+   (`robustness/walkforward.py` optimizing variant + `scripts/run_walkforward.py`), optimizing **only**
+   over the old detection-threshold space on fixed D1->H1->M5 (decision 4: never over the 42-grid).
+4. **M4 — re-run** the old preset (D1/H1/M5 @ 0.5% + machinery) through the unified engine → the
+   **updated OOS walk-forward figure that replaces -0.27R**, plus the sensitivity scan + stratified/regime.
+   ⛔ **CHECKPOINT — STOP and surface the updated WF number for review before building further.** It must
+   stay **materially negative**; a weird value means the port is wrong. Archive old -0.27R as an
+   earlier-engine footnote.
+5. **M2c — portfolio loop (LAST, optional, off the critical path):** a separate `run_portfolio` path —
+   simultaneous multi-instrument, correlation-group caps, daily/consecutive-loss circuit breakers, shared
+   ledger. Architectural; the per-instrument grid path stays untouched.
+6. **M5 — docs unification:** one README leading with the three lenses; merge SPEC + briefs; retire the
+   `smc_mtf/` narrative; reproduction commands; one honest prior-work lineage paragraph.
 
 ## Deduplicate / drop (once their unique value is ported)
 Old reimplemented **engine/detectors/loader/cost-model/InstrumentSpec** — superseded by the new
 (intrabar fills, per-fill cost attribution, proven no-look-ahead, Wilder, NY anchor). Drop the old flat
-`smc_mtf/` package after M2–M4 confirm the ported logic runs on the new engine.
+`smc_mtf/` package in **M5**, once the ported logic is confirmed on the new engine.
 
 ## Stop conditions
 - Each phase keeps `pytest` green and the XAUUSD 42-grid **bit-identical** (MD5 / <1e-9).
