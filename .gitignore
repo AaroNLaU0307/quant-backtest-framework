@@ -41,3 +41,6 @@ env/
 *.swp
 .DS_Store
 Thumbs.db
+
+# ---- Agent tooling (auto-generated local mirror of CLAUDE.md; not part of the repo) ----
+AGENTS.md
