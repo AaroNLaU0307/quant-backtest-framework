@@ -24,6 +24,8 @@ from mtf_smc.engine.trade import TradeSetup
 from mtf_smc.indicators.fib import FibLeg
 from mtf_smc.smc.structure import StructureEvent
 from mtf_smc.strategy.context import TFView, build_context
+from mtf_smc.strategy.legacy_poi import build_confluence_pois
+from mtf_smc.strategy.legacy_trigger import detect_legacy_triggers
 
 
 def _overlap(a: Tuple[float, float], b: Tuple[float, float]) -> bool:
@@ -133,6 +135,81 @@ def _direct(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
     return setups
 
 
+def _legacy_smc(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
+    """The OLD repo's strategy reproduced on this engine (off-by-default; docs/MERGE_PLAN.md).
+
+    D1 bias -> H1 deep-Fib-OTE confluence POI -> price pierces the OTE band -> within a monitor window
+    an M5 ``FVG AND (MSS OR CB/DB)`` trigger (with the protective inside the POI) -> entry at the M5 FVG
+    edge, stop = protective -/+ ATR buffer, hybrid-Fib TP (nearer of the 4.236 leg extension and the
+    nearest D1 liquidity). One setup per POI. All causal: POIs are used only from their created bar,
+    the pierce/trigger are later M5 bars, and the TP is frozen at the trigger.
+    """
+    htf, itf, ltf = ctx[cfg.htf], ctx[cfg.mtf], ctx[cfg.ltf]
+    poi_kw = dict(
+        swing_lookback=cfg.swing_lookback, min_retracement=cfg.legacy_min_retracement,
+        ob_use_wick=cfg.legacy_ob_use_wick, fvg_min_atr_mult=cfg.fvg_min_atr,
+        disp_atr_mult=cfg.legacy_disp_atr_mult, disp_body_ratio=cfg.legacy_disp_body_ratio,
+        confluence_overlap_pct=cfg.legacy_confluence_overlap_pct,
+        confluence_atr_dist=cfg.legacy_confluence_atr_dist,
+        min_confluence_score=cfg.legacy_min_confluence_score,
+        fib_ext_be=cfg.legacy_fib_ext_be, fib_ext_tp=cfg.fib_ext_tp,
+    )
+    trig_kw = dict(
+        swing_lookback=cfg.swing_lookback, structure_confirm_mode=cfg.legacy_structure_confirm_mode,
+        require_fvg=True, fvg_assoc_window=cfg.fvg_assoc_window, fvg_min_atr_mult=cfg.fvg_min_atr,
+        disp_atr_mult=cfg.legacy_disp_atr_mult, disp_body_ratio=cfg.legacy_disp_body_ratio,
+        cbdb_lookback=cfg.legacy_cbdb_lookback, cbdb_dominant_min=cfg.legacy_cbdb_dominant_min,
+    )
+    ltf_low = ltf.df["low"].to_numpy(); ltf_high = ltf.df["high"].to_numpy()
+    n_ltf = len(ltf.df)
+    setups: List[TradeSetup] = []
+    for direction in ("long", "short"):
+        pois = build_confluence_pois(itf.df, direction, itf.atr, **poi_kw)
+        triggers = detect_legacy_triggers(ltf.df, direction, ltf.atr, **trig_kw)
+        for poi in pois:
+            start = ltf.latest_closed_pos(itf.close_time(poi.created_index)) + 1
+            if start < 0 or start >= n_ltf:
+                continue
+            pierce = None                                        # first M5 bar entering the OTE band
+            for j in range(start, n_ltf):
+                if ltf_low[j] <= poi.zone_upper and ltf_high[j] >= poi.zone_lower:
+                    pierce = j; break
+            if pierce is None:
+                continue
+            win_end = pierce + cfg.legacy_monitor_window_ltf_bars
+            for t in triggers:
+                if t.break_index <= pierce or t.break_index > win_end:
+                    continue
+                ts = ltf.close_time(t.break_index)
+                if cfg.ema_filter and htf.bias_asof(ts) != direction:           # D1 bias gate
+                    continue
+                if not (poi.zone_lower <= t.protective_swing <= poi.zone_upper):  # protective in POI
+                    continue
+                atr_t = float(ltf.atr.iloc[t.break_index])
+                if not np.isfinite(atr_t):
+                    continue
+                entry = t.fvg_upper if direction == "long" else t.fvg_lower      # M5 FVG near edge
+                buf = cfg.atr_mult * atr_t
+                stop = t.protective_swing - buf if direction == "long" else t.protective_swing + buf
+                if (direction == "long" and stop >= entry) or (direction == "short" and stop <= entry):
+                    continue
+                liq = htf.nearest_opposing_swing(ts, direction, beyond=entry,
+                                                 major=(cfg.htf_target_mode == "major_swing"))
+                cands = [x for x in (poi.ext_tp, liq) if x is not None]
+                if not cands:
+                    continue
+                target = min(cands) if direction == "long" else max(cands)      # hybrid-Fib TP
+                setups.append(TradeSetup(
+                    direction=direction, entry=float(entry), initial_stop=float(stop),
+                    tp_mode="HTF_level", htf_target=float(target), decided_ts=ts,
+                    expiry_ts=ts + cfg.entry_expiry_bars * ltf.dur,
+                    invalidation=float(poi.zone_lower if direction == "long" else poi.zone_upper),
+                    tag=f"legacy_{t.kind}",
+                ))
+                break                                            # consume the POI on first valid trigger
+    return setups
+
+
 def generate_setups(
     m1: pd.DataFrame, cfg: StrategyConfig, ctx: Optional[Dict[str, TFView]] = None
 ) -> Tuple[List[TradeSetup], Dict[str, TFView]]:
@@ -142,6 +219,8 @@ def generate_setups(
         setups = _cascade(cfg, ctx)
     elif cfg.entry_model == "direct":
         setups = _direct(cfg, ctx)
+    elif cfg.entry_model == "legacy_smc":
+        setups = _legacy_smc(cfg, ctx)
     else:
         raise ValueError(f"Unknown entry_model {cfg.entry_model!r}")
     setups.sort(key=lambda s: s.decided_ts)

@@ -8,9 +8,9 @@ def test_legacy_d1h1m5_preset():
     c = StrategyConfig.legacy_d1h1m5()
     assert (c.htf, c.mtf, c.ltf) == ("D1", "H1", "M5")
     assert c.risk_pct == 0.005                      # the old repo's 0.5% sizing
-    assert c.entry_model == "cascade"
+    assert c.entry_model == "legacy_smc"
     assert c.detection_tfs == ("D1", "H1", "M5")
-    assert c.config_id == "cascade_D1_H1_M5_HTF_level"
+    assert c.config_id == "legacy_D1_H1_M5_hybrid_fib"
 
 
 def test_legacy_preset_does_not_perturb_the_default():

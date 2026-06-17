@@ -111,6 +111,20 @@ class StrategyConfig:
     major_swing_lookback: int = 5          # larger fractal => fewer, more significant HTF swings
     fib_ext_tp: float = 4.236              # hybrid_fib TP: impulse-leg extension target (ported; off-grid)
 
+    # --- Legacy SMC machinery (off-by-default; ported; read only by entry_model="legacy_smc") ---
+    legacy_min_retracement: float = 0.5        # deep-Fib OTE entry band: [min_ret, 1.0] of the leg
+    legacy_ob_use_wick: bool = False           # OB zone = body (False) | wick (True)
+    legacy_disp_atr_mult: float = 1.5          # displacement: range >= mult*ATR
+    legacy_disp_body_ratio: float = 0.5        # displacement: body/range >= ratio
+    legacy_confluence_overlap_pct: float = 0.5
+    legacy_confluence_atr_dist: float = 0.5
+    legacy_min_confluence_score: int = 2       # deep-Fib + >= 1 PD array
+    legacy_fib_ext_be: float = 1.618           # 1.618 extension (BE / partial-target anchor)
+    legacy_structure_confirm_mode: str = "any"  # 'any' | 'mss_only' | 'cbdb_only'
+    legacy_cbdb_lookback: int = 12
+    legacy_cbdb_dominant_min: int = 3
+    legacy_monitor_window_ltf_bars: int = 96   # LTF bars to wait for a trigger after POI pierce
+
     # --- bias filter & management ---
     ema_filter: bool = True
     ema_bias_tf: str = "htf"            # which TF the Vegas bias reads: 'htf' | 'mtf'
@@ -132,7 +146,7 @@ class StrategyConfig:
     @property
     def detection_tfs(self) -> tuple:
         """Distinct timeframes whose detectors this config needs (highest-first order preserved)."""
-        if self.entry_model == "cascade":
+        if self.entry_model in ("cascade", "legacy_smc"):
             tfs = [self.htf, self.mtf, self.ltf]
         else:  # direct: HTF always; MTF only when the POI must be backed by an MTF shift
             tfs = [self.htf] + ([self.mtf] if self.direct_poi_source == "requires_mtf_shift" else [])
@@ -161,6 +175,8 @@ class StrategyConfig:
     def config_id(self) -> str:
         if self.entry_model == "cascade":
             return f"cascade_{self.htf}_{self.mtf}_{self.ltf}_{self.tp_mode}"
+        if self.entry_model == "legacy_smc":
+            return f"legacy_{self.htf}_{self.mtf}_{self.ltf}_{self.tp_mode}"
         return f"direct_{self.htf}_{self.tp_mode}"
 
     @classmethod
@@ -173,5 +189,5 @@ class StrategyConfig:
         filters, confluence, portfolio risk + circuit breakers) are ported as off-by-default ablations
         in merge phase M2; here the TP is the nearest-liquidity HTF target — its closest existing analog.
         """
-        return cls(entry_model="cascade", htf="D1", mtf="H1", ltf="M5",
-                   tp_mode="HTF_level", htf_target_mode="major_swing", risk_pct=0.005)
+        return cls(entry_model="legacy_smc", htf="D1", mtf="H1", ltf="M5",
+                   tp_mode="hybrid_fib", htf_target_mode="major_swing", risk_pct=0.005)
