@@ -55,15 +55,23 @@ committed on `merge-unify`.
 1. **M2a (cont.) — detection layer** (off-by-default, each bit-identical-checked): OB/Breaker POI types;
    TK-style CB/DB break detectors; confluence scoring. *(hybrid-Fib TP already done.)*
 2. **M2b — execution filters:** session (Asia block + GBPJPY exception), spread, news-blackout interface.
+   The legacy entry model (`legacy_smc`: D1 bias + H1 deep-Fib-OTE confluence POI + M5
+   `FVG AND (MSS OR CB/DB)` trigger + hybrid-Fib TP) is assembled here, off the default `entry_model`.
+2.5. **⛔ FIDELITY CHECKPOINT (before M3/M4).** Run `legacy_smc` on a small slice and surface a trade log
+   showing it behaves like the OLD strategy (sane trade count; entries landing in the OTE/confluence
+   zones). **Do NOT run the full walk-forward until the legacy strategy is confirmed faithful** — the
+   single-config sanity step before scaling. A faithful −0.27R reproduction is only meaningful if the
+   ported strategy genuinely *is* the old one.
 3. **M3 — analyses:** 1D/2D parameter-sensitivity scan (`robustness/sensitivity.py` +
    `scripts/run_sensitivity.py`); the **L1 optimize-IS -> test-OOS walk-forward**
    (`robustness/walkforward.py` optimizing variant + `scripts/run_walkforward.py`), optimizing **only**
    over the old detection-threshold space on fixed D1->H1->M5 (decision 4: never over the 42-grid).
 4. **M4 — re-run** the old preset (D1/H1/M5 @ 0.5% + machinery) through the unified engine → the
    **updated OOS walk-forward figure that replaces -0.27R**, plus the sensitivity scan + stratified/regime.
-   ⛔ **CHECKPOINT — STOP and surface the updated WF number for review before building further.** It must
-   stay **materially negative**; a weird value means the port is wrong. Archive old -0.27R as an
-   earlier-engine footnote.
+   ⛔ **CHECKPOINT — STOP and surface BOTH (i) the updated WF number AND (ii) old-vs-new fidelity evidence
+   (trade counts / entry overlap on a common slice) for review before building further.** The number must
+   stay **materially negative**; the fidelity evidence must show "same strategy, better engine," not a
+   slightly different strategy. Archive old -0.27R as an earlier-engine footnote.
 5. **M2c — portfolio loop (LAST, optional, off the critical path):** a separate `run_portfolio` path —
    simultaneous multi-instrument, correlation-group caps, daily/consecutive-loss circuit breakers, shared
    ledger. Architectural; the per-instrument grid path stays untouched.
