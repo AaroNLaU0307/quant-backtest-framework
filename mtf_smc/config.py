@@ -124,6 +124,12 @@ class StrategyConfig:
     legacy_cbdb_lookback: int = 12
     legacy_cbdb_dominant_min: int = 3
     legacy_monitor_window_ltf_bars: int = 96   # LTF bars to wait for a trigger after POI pierce
+    # Session filter (old FilterParams default: ON for FX/metals — block new entries in the Asia session;
+    # GBPJPY-style exemption via legacy_allow_asia_session). Off-by-default; legacy_d1h1m5() turns it on.
+    legacy_session_filter: bool = False
+    legacy_allow_asia_session: bool = False
+    legacy_asia_start_h: float = 0.0           # Asia block window in UTC hours, half-open [start, end)
+    legacy_asia_end_h: float = 8.0
 
     # --- bias filter & management ---
     ema_filter: bool = True
@@ -181,13 +187,15 @@ class StrategyConfig:
 
     @classmethod
     def legacy_d1h1m5(cls) -> "StrategyConfig":
-        """The published single-instrument repo's setup, runnable on THIS engine: a fixed
-        D1->H1->M5 cascade at 0.5% risk, targeting the nearest significant HTF liquidity.
+        """The published single-instrument repo's strategy, reproduced on THIS engine.
 
-        Part of the merge (docs/MERGE_PLAN.md): lets the unified engine reproduce the old strategy's
-        timeframe/risk configuration. The old hybrid-Fib TP and the strategy/risk machinery (session
-        filters, confluence, portfolio risk + circuit breakers) are ported as off-by-default ablations
-        in merge phase M2; here the TP is the nearest-liquidity HTF target — its closest existing analog.
+        Part of the merge (docs/MERGE_PLAN.md): the unified engine running the OLD strategy — a D1->H1->M5
+        ``legacy_smc`` cascade at 0.5% risk (D1 bias -> H1 deep-Fib-OTE confluence POI -> M5
+        ``FVG AND (MSS OR CB/DB)`` trigger), hybrid-Fib TP, and the old default session filter ON (block
+        new entries during the Asia session). The remaining ported machinery (portfolio risk + circuit
+        breakers, alternative confirm modes) stays as off-by-default ablation knobs; this preset enables
+        exactly what the old default turned on.
         """
         return cls(entry_model="legacy_smc", htf="D1", mtf="H1", ltf="M5",
-                   tp_mode="hybrid_fib", htf_target_mode="major_swing", risk_pct=0.005)
+                   tp_mode="hybrid_fib", htf_target_mode="major_swing", risk_pct=0.005,
+                   legacy_session_filter=True)

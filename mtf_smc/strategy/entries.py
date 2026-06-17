@@ -135,6 +135,18 @@ def _direct(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
     return setups
 
 
+def _asia_blocked(ts: pd.Timestamp, cfg: StrategyConfig) -> bool:
+    """True if ``ts`` is inside the Asia-session block (the OLD FilterParams default; docs/MERGE_PLAN.md).
+
+    Off unless ``legacy_session_filter`` is set, and skipped for instruments granted the GBPJPY-style
+    ``legacy_allow_asia_session`` exemption. Window is half-open ``[start, end)`` in UTC hours.
+    """
+    if not cfg.legacy_session_filter or cfg.legacy_allow_asia_session:
+        return False
+    h = ts.hour + ts.minute / 60.0
+    return cfg.legacy_asia_start_h <= h < cfg.legacy_asia_end_h
+
+
 def _legacy_smc(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
     """The OLD repo's strategy reproduced on this engine (off-by-default; docs/MERGE_PLAN.md).
 
@@ -181,6 +193,8 @@ def _legacy_smc(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]
                 if t.break_index <= pierce or t.break_index > win_end:
                     continue
                 ts = ltf.close_time(t.break_index)
+                if _asia_blocked(ts, cfg):                                      # old default: Asia-session block
+                    continue
                 if cfg.ema_filter and htf.bias_asof(ts) != direction:           # D1 bias gate
                     continue
                 if not (poi.zone_lower <= t.protective_swing <= poi.zone_upper):  # protective in POI
