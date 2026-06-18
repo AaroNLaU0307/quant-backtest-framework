@@ -191,11 +191,14 @@ class StrategyConfig:
 
         Part of the merge (docs/MERGE_PLAN.md): the unified engine running the OLD strategy — a D1->H1->M5
         ``legacy_smc`` cascade at 0.5% risk (D1 bias -> H1 deep-Fib-OTE confluence POI -> M5
-        ``FVG AND (MSS OR CB/DB)`` trigger), hybrid-Fib TP, and the old default session filter ON (block
-        new entries during the Asia session). The remaining ported machinery (portfolio risk + circuit
-        breakers, alternative confirm modes) stays as off-by-default ablation knobs; this preset enables
-        exactly what the old default turned on.
+        ``FVG AND (MSS OR CB/DB)`` trigger), hybrid-Fib TP onto the nearest D1 swing-liquidity
+        (``nearest_swing`` = the old's nearest-unswept-D1-liquidity target at swing-lookback 2), and the old
+        default session filter ON (block new entries during the Asia session). The old exit takes no partial
+        scale-out (verified in the old ``trade_manager.py``); fidelity to entries AND exits was checked
+        behaviourally against the old engine (86% post-warmup entry overlap; matched-pair R aligned 16/18).
+        The remaining ported machinery (portfolio risk + circuit breakers, alternative confirm modes) stays
+        as off-by-default ablation knobs; this preset enables exactly what the old default turned on.
         """
         return cls(entry_model="legacy_smc", htf="D1", mtf="H1", ltf="M5",
-                   tp_mode="hybrid_fib", htf_target_mode="major_swing", risk_pct=0.005,
+                   tp_mode="hybrid_fib", htf_target_mode="nearest_swing", risk_pct=0.005,
                    legacy_session_filter=True)
