@@ -147,7 +147,26 @@ def _asia_blocked(ts: pd.Timestamp, cfg: StrategyConfig) -> bool:
     return cfg.legacy_asia_start_h <= h < cfg.legacy_asia_end_h
 
 
-def _legacy_smc(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]:
+def precompute_legacy_triggers(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> Dict[str, list]:
+    """The M5 ``FVG AND (MSS OR CB/DB)`` triggers per direction — the score/retracement-independent,
+    expensive part of ``legacy_smc``.
+
+    Precompute once per (instrument, window) and pass into ``generate_setups(..., legacy_triggers=...)``
+    so a sweep over the detection-threshold grid does not recompute the M5 triggers for every grid point
+    (the walk-forward's dominant cost). Output is identical to the inline detection in ``_legacy_smc``.
+    """
+    ltf = ctx[cfg.ltf]
+    trig_kw = dict(
+        swing_lookback=cfg.swing_lookback, structure_confirm_mode=cfg.legacy_structure_confirm_mode,
+        require_fvg=True, fvg_assoc_window=cfg.fvg_assoc_window, fvg_min_atr_mult=cfg.fvg_min_atr,
+        disp_atr_mult=cfg.legacy_disp_atr_mult, disp_body_ratio=cfg.legacy_disp_body_ratio,
+        cbdb_lookback=cfg.legacy_cbdb_lookback, cbdb_dominant_min=cfg.legacy_cbdb_dominant_min,
+    )
+    return {d: detect_legacy_triggers(ltf.df, d, ltf.atr, **trig_kw) for d in ("long", "short")}
+
+
+def _legacy_smc(cfg: StrategyConfig, ctx: Dict[str, TFView],
+                legacy_triggers: Optional[Dict[str, list]] = None) -> List[TradeSetup]:
     """The OLD repo's strategy reproduced on this engine (off-by-default; docs/MERGE_PLAN.md).
 
     D1 bias -> H1 deep-Fib-OTE confluence POI -> price pierces the OTE band -> within a monitor window
@@ -177,7 +196,8 @@ def _legacy_smc(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]
     setups: List[TradeSetup] = []
     for direction in ("long", "short"):
         pois = build_confluence_pois(itf.df, direction, itf.atr, **poi_kw)
-        triggers = detect_legacy_triggers(ltf.df, direction, ltf.atr, **trig_kw)
+        triggers = (legacy_triggers.get(direction) if legacy_triggers is not None
+                    else detect_legacy_triggers(ltf.df, direction, ltf.atr, **trig_kw))
         for poi in pois:
             start = ltf.latest_closed_pos(itf.close_time(poi.created_index)) + 1
             if start < 0 or start >= n_ltf:
@@ -225,16 +245,22 @@ def _legacy_smc(cfg: StrategyConfig, ctx: Dict[str, TFView]) -> List[TradeSetup]
 
 
 def generate_setups(
-    m1: pd.DataFrame, cfg: StrategyConfig, ctx: Optional[Dict[str, TFView]] = None
+    m1: pd.DataFrame, cfg: StrategyConfig, ctx: Optional[Dict[str, TFView]] = None,
+    legacy_triggers: Optional[Dict[str, list]] = None,
 ) -> Tuple[List[TradeSetup], Dict[str, TFView]]:
-    """Build all entry setups for ``cfg`` (sorted by decision time)."""
+    """Build all entry setups for ``cfg`` (sorted by decision time).
+
+    ``legacy_triggers`` (optional) injects precomputed ``legacy_smc`` M5 triggers (see
+    ``precompute_legacy_triggers``) so a sweep over the detection grid does not recompute them; it is
+    ignored for non-legacy entry models.
+    """
     ctx = ctx or build_context(m1, cfg)
     if cfg.entry_model == "cascade":
         setups = _cascade(cfg, ctx)
     elif cfg.entry_model == "direct":
         setups = _direct(cfg, ctx)
     elif cfg.entry_model == "legacy_smc":
-        setups = _legacy_smc(cfg, ctx)
+        setups = _legacy_smc(cfg, ctx, legacy_triggers=legacy_triggers)
     else:
         raise ValueError(f"Unknown entry_model {cfg.entry_model!r}")
     setups.sort(key=lambda s: s.decided_ts)
