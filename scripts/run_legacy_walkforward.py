@@ -131,12 +131,18 @@ def run_window(symbol, m1, inst, cost, base, is_start, is_end, oos_end, tag) -> 
 
 
 def main() -> None:
+    # Chunked + resumable so it survives this environment reaping background processes when the agent
+    # goes idle: run in short FOREGROUND bursts that exit cleanly after WF_MAX_WINDOWS completed windows
+    # (default: no cap). WF_SYMBOLS scopes the run (e.g. XAUUSD first, then EURUSD). Resume stitches them.
     os.makedirs(OUT, exist_ok=True)
+    syms = tuple(s for s in os.environ.get("WF_SYMBOLS", ",".join(SYMBOLS)).split(",") if s)
+    max_windows = int(os.environ.get("WF_MAX_WINDOWS", "0")) or None
     done = _done()
-    _log(f"=== WF start; {len(done)} windows already done ===")
+    _log(f"=== WF start; symbols={syms} max_windows={max_windows}; {len(done)} windows already done ===")
     base = StrategyConfig.legacy_d1h1m5()
+    processed = 0
 
-    for symbol in SYMBOLS:
+    for symbol in syms:
         t = time.time()
         m1 = load_is(DataConfig.for_symbol(symbol))
         inst = get_instrument(symbol)
@@ -155,6 +161,10 @@ def main() -> None:
                 continue
             pd.DataFrame([row]).to_csv(WIN_CSV, mode="a", header=not os.path.exists(WIN_CSV), index=False)
             _log(f"{tag} DONE in {time.time()-wt:.0f}s  -> CSV row written")
+            processed += 1
+            if max_windows and processed >= max_windows:
+                _log(f"=== CHUNK_PAUSE: completed {processed} window(s) this run; resume to continue ===")
+                return
 
     _log("=== WF_COMPLETE ===")
 

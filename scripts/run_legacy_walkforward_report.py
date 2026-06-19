@@ -62,18 +62,18 @@ def main() -> None:
          "-" * 82,
          "  IS-best params per window (large drift = overfit signal):"]
     for _, r in df.iterrows():
-        oos = r["oos_r"] if str(r["oos_r"]) not in ("", "nan") else "—"
+        oos = r["oos_r"] if str(r["oos_r"]) not in ("", "nan") else "-"
         L.append(f"     {r['symbol']} {r['oos_start']}: best={r['best']}  IS_r={r['is_r']}->OOS_r={oos} (N{r['oos_n']})")
 
     R_all = _R(df)
     if len(R_all):
         mean, lo, hi = bootstrap_mean_ci(R_all)
         if hi < 0:
-            v = "(A) no robust edge — OOS significantly negative."
+            v = "(A) no robust edge - OOS significantly negative."
         elif lo < 0 < hi:
-            v = "(A/C) no provable edge — OOS CI crosses 0, indistinguishable from zero."
+            v = "(A/C) no provable edge - OOS CI crosses 0, indistinguishable from zero."
         else:
-            v = "(B) OOS significantly positive — potential edge, needs further validation."
+            v = "(B) OOS significantly positive - potential edge, needs further validation."
         L += ["-" * 82, f"  VERDICT: {v}",
               "  [old earlier-engine walk-forward, for reference: pooled OOS E[R] = -0.27 over EUR+XAU "
               "2015-2023; this updated run is on the sealed-wall IS span 2015-2022]"]
