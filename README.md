@@ -35,7 +35,8 @@ so the strategy is falsified three independent, non-overlapping ways — and all
 
 - **Walk-forward OOS** — optimize the legacy detection thresholds on a fixed D1→H1→M5, roll IS18/OOS6:
   pooled **E[R] = −0.339 R**, 95% CI **[−0.45, −0.22]**, **21/24 windows negative** (sign-test p = 0.0001).
-  This reproduces the old published strategy's **−0.27 R** on a more rigorous engine — same verdict, sharper.
+  This reproduces the old published strategy's **−0.27 R** on a more rigorous engine (on the sealed-wall IS
+  span 2015–2022; the old rolled into 2023) — same verdict, sharper.
 - **Replication grid** (this study) — **0 / 210** config×instrument cells survive cross-instrument BH-FDR.
 - **Random-entry nulls** — the structured entries are statistically indistinguishable from random.
 
@@ -84,11 +85,14 @@ Data is **not committed** (size + HistData licence). See [`docs/SPEC.md`](docs/S
 `docs/SPEC_multi_instrument.md` §1 for acquisition; a tiny synthetic sample drives the no-download tests.
 
 ## Part of a research arc
-Three independent falsification studies, three paradigms, the same verdict: **subjective SMC** (reproduced
-here as the L1 walk-forward and rejected OOS, **−0.339 R**), **objective Donchian breakout** (no confirmable
-edge under Monte-Carlo), and **this structured MTF-SMC grid** — first a single-instrument null on gold
-(0/42), now a **multi-asset null across five instruments**. Single-instrument trend/structure alpha is too thin to confirm, and it does not
-replicate across markets — which is *why* professional trend-following is multi-asset and diversified.
+A broader falsification effort spans **two paradigms in separate repositories**, reaching the same verdict
+from different directions. **This repository is the MTF-SMC study** — it falsifies the approach three
+disjoint ways (the walk-forward, multi-instrument replication, and random-entry lenses above; the old
+single-instrument *subjective*-SMC strategy is reproduced here as **L1**, an internal lens, not a separate
+study). A **separate** repository tackles an **objective Donchian breakout** and finds no confirmable edge
+under Monte-Carlo. The throughline across both: single-instrument trend/structure alpha is too thin to
+confirm and does not replicate across markets — which is *why* professional trend-following is multi-asset
+and diversified.
 
 ## Limitations & disclaimer
 Modelled (not historical) spread/slippage; SMC discretion operationalized into one specific rule-set;
