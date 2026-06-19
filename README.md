@@ -8,7 +8,7 @@ FDR + Deflated Sharpe, cross-instrument correlation + correlation-aware random-e
 a once-only locked out-of-sample gate — and the discipline to trust a negative result.
 
 `Python` · `pandas/numpy/scipy` · event-driven backtester · intrabar M1 fills · **5 instruments × 42
-configs = 210 trials** · BH-FDR/DSR · correlation-aware meta-analysis · 111 unit tests
+configs = 210 trials** · BH-FDR/DSR · correlation-aware meta-analysis · 141 unit tests
 
 ## The honest finding
 **No replicable edge.** Across **42 pre-registered configurations** on five instruments (XAUUSD, EURUSD,
@@ -29,6 +29,20 @@ By the pre-registered rule, nothing earned an out-of-sample look, so **the locke
 > that **replicates as a non-result across FX majors, an FX cross, a metal, and crude — after correction**
 > is a *stronger, more credible* falsification than any single-instrument result.
 
+## Three lenses, one verdict
+This repo now unifies a previously separate single-instrument **walk-forward** study onto the same engine,
+so the strategy is falsified three independent, non-overlapping ways — and all three agree:
+
+- **Walk-forward OOS** — optimize the legacy detection thresholds on a fixed D1→H1→M5, roll IS18/OOS6:
+  pooled **E[R] = −0.339 R**, 95% CI **[−0.45, −0.22]**, **21/24 windows negative** (sign-test p = 0.0001).
+  This reproduces the old published strategy's **−0.27 R** on a more rigorous engine — same verdict, sharper.
+- **Replication grid** (this study) — **0 / 210** config×instrument cells survive cross-instrument BH-FDR.
+- **Random-entry nulls** — the structured entries are statistically indistinguishable from random.
+
+The full three-lens write-up — including the behavioural **fidelity** proof that the reproduced strategy
+*is* the old one (86 % entry overlap, matched-pair R 16/18) — is in
+**[`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md)**.
+
 ## What's on display (engineering & rigor)
 - **Proven** zero look-ahead — truncation-invariance tests on every detector + an end-to-end engine test;
   MTF data right-aligned to the DST-aware NY-close.
@@ -44,6 +58,8 @@ By the pre-registered rule, nothing earned an out-of-sample look, so **the locke
   never treated as five independent votes.
 
 ## Read more
+- **[`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md)** — the unified **three-lens** report (walk-forward
+  −0.339 R, replication 0/210, random-entry) + the legacy-strategy fidelity evidence and what the merge did.
 - **[`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md)** — the full multi-instrument write-up
   (design, methods, the bug + audit, correlation, results, conclusion).
 - [`docs/REPLICATION.md`](docs/REPLICATION.md) — the replication grid + meta-analysis tables.
@@ -56,20 +72,22 @@ By the pre-registered rule, nothing earned an out-of-sample look, so **the locke
 ```powershell
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
-.venv\Scripts\python -m pytest -q                            # 111 tests
+.venv\Scripts\python -m pytest -q                            # 141 tests
 .venv\Scripts\python scripts\ingest_instruments.py           # build per-instrument M1 caches
-.venv\Scripts\python scripts\run_grid.py fresh --symbol=EURUSD   # 42-config IS grid (per instrument)
-.venv\Scripts\python scripts\run_replication.py              # replication grid + correlation + meta
+.venv\Scripts\python scripts\run_grid.py fresh --symbol=EURUSD   # L2: 42-config IS grid (per instrument)
+.venv\Scripts\python scripts\run_replication.py              # L2: replication grid + correlation + meta
 .venv\Scripts\python scripts\make_replication_figure.py      # the heatmap above
+.venv\Scripts\python scripts\run_legacy_walkforward.py       # L1: walk-forward (legacy_smc; chunked, resumable)
+.venv\Scripts\python scripts\run_legacy_walkforward_report.py   # L1: pooled OOS -0.339 R + CI + per-window
 ```
 Data is **not committed** (size + HistData licence). See [`docs/SPEC.md`](docs/SPEC.md) §1.5 and
 `docs/SPEC_multi_instrument.md` §1 for acquisition; a tiny synthetic sample drives the no-download tests.
 
 ## Part of a research arc
-Three independent falsification studies, three paradigms, the same verdict: **subjective SMC** (rejected
-by walk-forward OOS), **objective Donchian breakout** (no confirmable edge under Monte-Carlo), and **this
-structured MTF-SMC grid** — first a single-instrument null on gold (0/42), now a **multi-asset null across
-five instruments**. Single-instrument trend/structure alpha is too thin to confirm, and it does not
+Three independent falsification studies, three paradigms, the same verdict: **subjective SMC** (reproduced
+here as the L1 walk-forward and rejected OOS, **−0.339 R**), **objective Donchian breakout** (no confirmable
+edge under Monte-Carlo), and **this structured MTF-SMC grid** — first a single-instrument null on gold
+(0/42), now a **multi-asset null across five instruments**. Single-instrument trend/structure alpha is too thin to confirm, and it does not
 replicate across markets — which is *why* professional trend-following is multi-asset and diversified.
 
 ## Limitations & disclaimer

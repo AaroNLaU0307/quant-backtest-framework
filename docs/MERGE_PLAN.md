@@ -1,8 +1,10 @@
 # MERGE_PLAN — unifying the SMC/MTF falsification repos onto one engine
 
-**Status:** APPROVED (Stage 1 → 2 planning). Building the unified repo **locally** on branch
-`merge-unify`. **Do NOT push to GitHub** — the upload is a separate final step, approved only after the
-merged repo + re-run numbers are reviewed.
+**Status:** COMPLETE (M1–M5 done; M2c portfolio overlay implemented but full-IS run deferred — see
+[`MERGE_REPORT.md`](MERGE_REPORT.md)). Built **locally** on branch `merge-unify`. Outcome: L1 walk-forward
+**−0.339 R** [−0.45, −0.22] (the updated −0.27 R), L2 replication **0/210**, L3 random-entry null — unified
+in [`MERGE_REPORT.md`](MERGE_REPORT.md). **Not pushed** — the upload is a separate final step, pending
+review of the merged repo + re-run numbers + the unified README.
 
 This repo (`MTF Analysis`, package `mtf_smc/`) is the **canonical base**. The old repo
 (`Algorithmic Trading System`, package `smc_mtf/`, published as
