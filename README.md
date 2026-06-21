@@ -94,6 +94,15 @@ under Monte-Carlo. The throughline across both: single-instrument trend/structur
 confirm and does not replicate across markets — which is *why* professional trend-following is multi-asset
 and diversified.
 
+## Follow-up research
+After falsifying single-instrument trend/structure strategies here, I moved to **multi-asset
+time-series momentum** — diversifying across independent risk factors to raise signal-to-noise.
+That study **confirmed a modest, statistically significant edge** (net Sharpe ~0.70–0.75, 95 %
+bootstrap CI excludes 0, with crisis alpha in 2008 and 2020), validated with the same
+falsification-oriented toolbox (bootstrap CIs, walk-forward, Monte-Carlo, cost sensitivity, and a
+risk-parity control):
+**[github.com/AaroNLaU0307/multi-asset-tsmom](https://github.com/AaroNLaU0307/multi-asset-tsmom)**
+
 ## Limitations & disclaimer
 Modelled (not historical) spread/slippage; SMC discretion operationalized into one specific rule-set;
 representative retail cost placeholders; WTI's thin 2017 / short 2023; deep cascades are trade-starved by
