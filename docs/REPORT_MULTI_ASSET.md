@@ -139,9 +139,10 @@ positive on, and positive-*and*-significant on?
 | `cascade_W1_H4_M15_HTF_level` | **+2.00** | −0.54 | +0.14 | −0.54 | −0.33 | 2 | **0** |
 | `cascade_W1_H4_M5_HTF_level` | −0.14 | −0.62 | −0.19 | **+1.05** | −0.16 | 1 | **0** |
 
-The two brightest cells — **+2.00 R on gold** and **+1.05 R on GBPJPY** — are each positive on a
-*single* instrument and significant on **none**: the textbook small-N mirage. No config is
-positive-and-significant on even one instrument, let alone two.
+The two brightest cells do not generalize: the **+2.00 R gold** cell is positive on only **2 of 5**
+instruments (the second, GBP, a marginal +0.14) and negative on the other three; the **+1.05 R GBPJPY**
+cell is positive on **only itself** (1 of 5). Neither is significant on any instrument: the textbook
+small-*N* mirage. No config is positive-and-significant on even one instrument, let alone two.
 
 **Correlation-aware pooling** (DerSimonian-Laird random-effects, variance inflated ×1.45 for the
 effective N) — the best six configs by pooled E[R]:

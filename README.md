@@ -1,5 +1,7 @@
 # Multi-Timeframe SMC Price-Action — A Multi-Instrument Falsification Study
 
+[![Tests](https://github.com/AaroNLaU0307/quant-backtest-framework/actions/workflows/tests.yml/badge.svg)](https://github.com/AaroNLaU0307/quant-backtest-framework/actions/workflows/tests.yml)
+
 An institutional-grade, **falsification-oriented** backtest asking one question honestly: does a
 top-down, multi-timeframe **Smart-Money-Concepts (SMC)** price-action strategy carry a *statistically
 real* edge that **replicates across independent instruments**? It pairs a paranoid, zero-look-ahead
@@ -8,7 +10,43 @@ FDR + Deflated Sharpe, cross-instrument correlation + correlation-aware random-e
 a once-only locked out-of-sample gate — and the discipline to trust a negative result.
 
 `Python` · `pandas/numpy/scipy` · event-driven backtester · intrabar M1 fills · **5 instruments × 42
-configs = 210 trials** · BH-FDR/DSR · correlation-aware meta-analysis · 141 unit tests
+configs = 210 trials** · BH-FDR/DSR · correlation-aware meta-analysis · **141 passing tests, CI-verified**
+
+## TL;DR (60 seconds)
+- **The finding: no replicable edge.** 42 pre-registered configs × 5 instruments (XAUUSD, EURUSD, GBPUSD,
+  GBPJPY, WTIUSD), IS 2015–2022: **0/210** config×instrument cells survive cross-instrument BH-FDR; best
+  correlation-aware pooled expectancy **−0.000 R**.
+- **Three disjoint lenses, not one fragile test** — a detection-threshold **walk-forward** (**E[R] =
+  −0.339 R**, 95% CI **[−0.45, −0.22]**, 21/24 windows negative), the **multi-instrument replication grid**
+  above, and a **random-entry null** — all three agree.
+- **The eye-catching cells don't survive scrutiny** — +2.0 R on gold is positive on only 2 of 5
+  instruments (the second, GBPUSD, a marginal +0.14); +1.0 R on GBPJPY is positive on only itself.
+  Neither is significant on any instrument: small-sample noise, not edge.
+- **Five instruments are never treated as five independent votes** — a cross-instrument correlation
+  matrix deflates them to an **effective 3.45**, inflating pooled variance ×1.45 before any significance
+  claim.
+- **A real bug was caught by watching the output, not by a passing test** — a gold-calibrated constant
+  produced an impossible −25 R on EURUSD; the fix was locked behind a systematic absolute-price-constant
+  audit of the whole signal/fill/cost path, verified dynamically on all five instruments.
+- **141 tests, CI-verified** on every push (badge above) — not a self-reported count.
+
+## The arc at a glance
+
+```mermaid
+flowchart TD
+    Q["MTF-SMC price-action strategy<br/>does a real, replicable edge exist?"]
+
+    Q --> L1["L1 — Walk-forward OOS<br/>optimize detection thresholds, EUR+XAU<br/>❌ E[R] = −0.339 R, CI excludes 0, 21/24 windows negative"]
+    Q --> L2["L2 — Replication grid<br/>42 configs × 5 instruments, BH-FDR<br/>❌ 0/210 cells survive"]
+    Q --> L3["L3 — Random-entry nulls<br/>remove the entry signal entirely<br/>❌ indistinguishable from random"]
+
+    L1 --> V["Verdict: no replicable edge"]
+    L2 --> V
+    L3 --> V
+
+    V -. parallel study .-> SIB["Objective Donchian breakout (sibling repo)<br/>Monte-Carlo gate<br/>❌ no confirmable edge"]
+    V -. led to .-> FU["Multi-asset TSMOM (follow-up)<br/>✅ CONFIRMED — net Sharpe 0.75, CI excludes 0"]
+```
 
 ## The honest finding
 **No replicable edge.** Across **42 pre-registered configurations** on five instruments (XAUUSD, EURUSD,
@@ -18,8 +56,10 @@ GBPUSD, GBPJPY, WTIUSD), IS 2015–2022, with realistic per-instrument costs and
   positive-and-significant on even one instrument, **0 / 42** on two or more.
 - **0 / 210** (config × instrument) cells survive the cross-instrument BH-FDR.
 - The best **correlation-aware** random-effects pooled expectancy is **−0.000 R** (one-sided p ≥ 0.50).
-- The eye-catching cells — **+2.0 R on gold**, **+1.0 R on GBPJPY** — are each positive on a *single*
-  instrument and significant on **none**: small-sample noise that regresses to zero across assets.
+- The eye-catching cells don't generalize — **+2.0 R on gold** is positive on only 2 of 5 instruments
+  (the second, GBPUSD, a marginal +0.14) and negative on the rest; **+1.0 R on GBPJPY** is positive on
+  only itself (1 of 5). Neither is significant on any instrument: small-sample noise that regresses to
+  zero across assets.
 
 By the pre-registered rule, nothing earned an out-of-sample look, so **the locked OOS stays sealed.**
 
@@ -89,10 +129,11 @@ A broader falsification effort spans **two paradigms in separate repositories**,
 from different directions. **This repository is the MTF-SMC study** — it falsifies the approach three
 disjoint ways (the walk-forward, multi-instrument replication, and random-entry lenses above; the old
 single-instrument *subjective*-SMC strategy is reproduced here as **L1**, an internal lens, not a separate
-study). A **separate** repository tackles an **objective Donchian breakout** and finds no confirmable edge
-under Monte-Carlo. The throughline across both: single-instrument trend/structure alpha is too thin to
-confirm and does not replicate across markets — which is *why* professional trend-following is multi-asset
-and diversified.
+study). A **separate** repository —
+**[github.com/AaroNLaU0307/quant-trend-research](https://github.com/AaroNLaU0307/quant-trend-research)**
+— tackles an **objective Donchian breakout** and finds no confirmable edge under Monte-Carlo. The
+throughline across both: single-instrument trend/structure alpha is too thin to confirm and does not
+replicate across markets — which is *why* professional trend-following is multi-asset and diversified.
 
 ## Follow-up research
 After falsifying single-instrument trend/structure strategies here, I moved to **multi-asset
@@ -108,6 +149,9 @@ Modelled (not historical) spread/slippage; SMC discretion operationalized into o
 representative retail cost placeholders; WTI's thin 2017 / short 2023; deep cascades are trade-starved by
 construction. **Research and educational only — not investment advice.** The strategy was found to have no
 replicable edge and must not be traded.
+
+See [`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) for the strongest objections to this study, answered with
+the repo's own evidence.
 
 ## License
 MIT (see [`LICENSE`](LICENSE)).
