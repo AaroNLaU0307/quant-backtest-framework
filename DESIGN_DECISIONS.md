@@ -54,7 +54,7 @@ response wasn't just a patch: every numeric constant in the detection → indica
 path was enumerated and classified as scale-invariant (ATR/pip/tick/R-relative) or absolute-price
 (must come from `InstrumentSpec`). The two offenders (`stop_slippage`, the breakeven buffer) were the
 **only** absolute-price constants found in the whole path. The fix is verified **dynamically, not just by
-inspection**: the median real stop-out is **−1.14 to −1.23 R on all five instruments**, GBPJPY and WTIUSD
+inspection**: the median real stop-out is **−1.02 to −1.04 R on all five instruments**, GBPJPY and WTIUSD
 included, and every instrument now runs a dedicated −1R stop-out assertion in addition to the original
 winning-trade check. [`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md) §3.2–3.3.
 
