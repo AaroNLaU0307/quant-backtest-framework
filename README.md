@@ -142,7 +142,7 @@ That study **confirmed a modest, statistically significant edge** (net Sharpe ~0
 bootstrap CI excludes 0, with crisis alpha in 2008 and 2020), validated with the same
 falsification-oriented toolbox (bootstrap CIs, walk-forward, Monte-Carlo, cost sensitivity, and a
 risk-parity control):
-**[github.com/AaroNLaU0307/multi-asset-tsmom](https://github.com/AaroNLaU0307/multi-asset-tsmom)**
+**[github.com/AaroNLaU0307/multi-asset-tsmom-research](https://github.com/AaroNLaU0307/multi-asset-tsmom-research)**
 
 ## Limitations & disclaimer
 Modelled (not historical) spread/slippage; SMC discretion operationalized into one specific rule-set;
