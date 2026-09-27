@@ -60,7 +60,7 @@ flowchart TD
     L3 --> V
 
     V -. parallel study .-> SIB["Objective Donchian breakout (sibling repo)<br/>Monte-Carlo gate<br/>❌ no confirmable edge"]
-    V -. led to .-> FU["Multi-asset TSMOM (follow-up)<br/>✅ CONFIRMED — net Sharpe 0.75, CI excludes 0"]
+    V -. led to .-> FU["Multi-asset TSMOM (follow-up)<br/>SUPPORTED, not independently confirmed — net Sharpe 0.75, CI excludes 0"]
 ```
 
 ## The honest finding
@@ -170,8 +170,8 @@ replicate across markets — which is *why* professional trend-following is mult
 ## Follow-up research
 After falsifying single-instrument trend/structure strategies here, I moved to **multi-asset
 time-series momentum** — diversifying across independent risk factors to raise signal-to-noise.
-That study **confirmed a modest, statistically significant edge** (net Sharpe ~0.70–0.75, 95 %
-bootstrap CI excludes 0, with crisis alpha in 2008 and 2020), validated with the same
+That study **supports a modest edge, not yet independently confirmed** (net Sharpe 0.75 at 2 bps and
+0.70 at 5 bps, 95 % bootstrap CI excludes 0, positive in the 2008 and 2020 crisis windows), validated with the same
 falsification-oriented toolbox (bootstrap CIs, walk-forward, Monte-Carlo, cost sensitivity, and a
 risk-parity control):
 **[github.com/AaroNLaU0307/multi-asset-tsmom-research](https://github.com/AaroNLaU0307/multi-asset-tsmom-research)**
