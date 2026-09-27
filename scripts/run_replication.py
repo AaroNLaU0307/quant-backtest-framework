@@ -47,6 +47,13 @@ def load_tables() -> dict:
     return {s: pd.read_csv(_table_path(s), dtype={c: str for c in PROVENANCE_COLUMNS}) for s in SYMS}
 
 
+def table_sha256(path) -> str:
+    """sha256 of a master table over LF-normalised bytes. The CSVs are written with the platform's line
+    endings but committed and checked out as LF (``.gitattributes``: ``eol=lf``), so hashing the raw
+    bytes on Windows gives a value no checkout reproduces."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def input_provenance(tables: dict) -> dict:
     """Provenance of the inputs; raises unless all five grids came from one engine version."""
     inputs, codes = {}, set()
@@ -56,7 +63,7 @@ def input_provenance(tables: dict) -> dict:
                                f"(scripts/run_grid.py fresh --symbol={s}).")
         codes |= set(df["code_hash"])
         inputs[s] = {"code_hash": sorted(set(df["code_hash"])), "git_commit": sorted(set(df["git_commit"])),
-                     "sha256": hashlib.sha256(_table_path(s).read_bytes()).hexdigest()}
+                     "sha256": table_sha256(_table_path(s))}
     if len(codes) != 1:
         raise RuntimeError(f"master tables come from different engine code {sorted(codes)}; "
                            f"rerun the stale grids with `fresh`.")

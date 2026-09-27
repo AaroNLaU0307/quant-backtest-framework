@@ -92,6 +92,10 @@ Or stage by stage — the same commands `run_all.py` runs:
 | 8 (optional) | `python scripts/run_all.py --stages=stopslip` | high-slippage-on-stops grids (stop slippage ×10) in `output/grid/stopslip_x10/`, `output/grid/{GBPJPY,WTIUSD}/stopslip_x10/` |
 
 Notes:
+- **Order.** `run_all.py` runs the stages in the order walk-forward (4–5), random entry (6), optional
+  stop-slippage (8), then replication (3) and figures (7) last: steps 3 and 7 rewrite tracked files
+  (`docs/REPLICATION.md`, `assets/*.png`), and any row-stamping step run after them stamps its rows
+  `-dirty`. Stage by stage, keep that order (added 2026-09-27, addendum §12).
 - Grids: a grid killed mid-run resumes if restarted **without** `fresh`, but only onto rows from the
   same engine code, configuration and data span; anything else raises (restart with `fresh`). The gold
   grid was documented at about 30 minutes (`docs/REPORT.md` §10); M1-LTF cascades dominate memory.

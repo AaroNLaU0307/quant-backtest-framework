@@ -1,4 +1,4 @@
-"""One driver for the whole study: data check -> 5 grids -> replication -> L1 walk-forward -> report.
+"""One driver for the whole study: data check -> 5 grids -> L1 walk-forward -> random entry -> replication.
 
 Runs every stage from scratch (``fresh``: no row from an earlier run is reused) in the order the results
 depend on each other. Each stage is a separate process, so the multi-gigabyte M1 contexts of one grid
@@ -13,15 +13,18 @@ every script here.
     python scripts/run_all.py --stages=check,grids     # a subset, in pipeline order
     python scripts/run_all.py --dry-run                # print the commands only
 
-Stages (default = all but ``stopslip``):
+Stages, in run order (default = all but ``stopslip``):
   check        in-sample M1 caches for the 5 instruments -> output/data_manifest.csv
   grids        scripts/run_grid.py fresh --symbol=<SYM> for XAUUSD EURUSD GBPUSD GBPJPY WTIUSD
-  replication  scripts/run_replication.py (+ stopouts.csv, provenance.json, docs/REPLICATION.md)
   walkforward  scripts/run_legacy_walkforward.py fresh (L1, XAUUSD + EURUSD)
   wf_report    scripts/run_legacy_walkforward_report.py
   robustness   scripts/run_robustness.py 1000 (L3 random-entry nulls, XAUUSD survivors)
-  figures      scripts/make_replication_figure.py and scripts/make_figures.py (assets/*.png)
   stopslip     optional: the high-slippage-on-stops grids (stop slippage x10) on XAUUSD, GBPJPY, WTIUSD
+  replication  scripts/run_replication.py (+ stopouts.csv, provenance.json, docs/REPLICATION.md)
+  figures      scripts/make_replication_figure.py and scripts/make_figures.py (assets/*.png)
+
+The last two rewrite tracked files, so they run after every stage that stamps rows with ``git_commit``;
+otherwise one call would stamp the later rows ``-dirty``.
 
 A committed ``output/data_manifest.csv`` pins the data: if an in-sample frame hashes differently, the
 check stage stops (pass ``--allow-data-change`` to overwrite the manifest deliberately).
@@ -41,8 +44,13 @@ from mtf_smc.data.loader import load_is
 from mtf_smc.provenance import code_hash, git_commit
 from mtf_smc.robustness.replication import SYMBOLS
 
-STAGES = ("check", "grids", "replication", "walkforward", "wf_report", "robustness", "figures", "stopslip")
-DEFAULT_STAGES = STAGES[:-1]
+# Every stage that stamps result rows with git_commit runs before the two that rewrite tracked files
+# (replication -> docs/REPLICATION.md, figures -> assets/*.png). Each stage is a new process that re-reads
+# `git status`, so a tracked file rewritten earlier in the same call would stamp every later row -dirty.
+ROW_STAMPING_STAGES = ("grids", "walkforward", "robustness", "stopslip")
+TRACKED_WRITING_STAGES = ("replication", "figures")
+STAGES = ("check", "grids", "walkforward", "wf_report", "robustness", "stopslip", "replication", "figures")
+DEFAULT_STAGES = tuple(s for s in STAGES if s != "stopslip")
 MANIFEST = REPO_ROOT / "output" / "data_manifest.csv"
 N_NULL = 1000                      # report-grade random-entry nulls (docs/SPEC.md §8: >= 1000)
 STOPSLIP_SYMBOLS = ("XAUUSD", "GBPJPY", "WTIUSD")   # SPEC §6.5 (gold) + SPEC_multi_instrument §6
