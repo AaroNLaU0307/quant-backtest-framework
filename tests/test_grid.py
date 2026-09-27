@@ -2,9 +2,14 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from mtf_smc.config import StrategyConfig
+from mtf_smc.engine.backtester import run_backtest
+from mtf_smc.engine.costs import CostModel, high_slippage_on_stops
 from mtf_smc.grid import apply_multiple_testing, enumerate_primary_grid, run_grid
+from mtf_smc.provenance import PROVENANCE_COLUMNS, code_hash
+from mtf_smc.risk.instrument import XAUUSD
 
 
 def test_primary_grid_is_42_with_right_composition():
@@ -54,3 +59,35 @@ def test_apply_multiple_testing():
     out = apply_multiple_testing(df, n_trials=5)
     assert out["bh_reject"].tolist() == [True, True, False, False, False]   # matches the BH-FDR test
     assert (out["dsr"] <= out["psr"] + 1e-9).all()                          # DSR deflates PSR
+
+
+def test_rows_carry_provenance_and_real_stopout_columns(regime_m1, tmp_path):
+    m1 = regime_m1.iloc[: 10 * 1440]
+    cfg = StrategyConfig(entry_model="direct", htf="H1", tp_mode="fixed_3R")
+    df = run_grid(m1, [cfg], incremental_csv=tmp_path / "raw.csv")
+    row = df.iloc[0]
+    assert set(PROVENANCE_COLUMNS) <= set(df.columns) and row["code_hash"] == code_hash()
+    stops = [t.realized_R for t in run_backtest(m1, cfg).trades if t.exit_reason == "stop"]
+    assert stops and row["n_stop_exits"] == len(stops)
+    assert row["median_stop_R"] == pytest.approx(float(pd.Series(stops).median()))
+
+
+def test_resume_refuses_rows_from_other_code_or_config(regime_m1, tmp_path):
+    m1 = regime_m1.iloc[: 5 * 1440]
+    cfg = StrategyConfig(entry_model="direct", htf="H1", tp_mode="HTF_level")
+    raw = tmp_path / "raw.csv"
+    run_grid(m1, [cfg], incremental_csv=raw)
+    assert len(run_grid(m1, [cfg], incremental_csv=raw)) == 1          # same code + config: resumes
+    with pytest.raises(RuntimeError, match="fresh"):                   # other cost model
+        run_grid(m1, [cfg], cost=high_slippage_on_stops(CostModel(XAUUSD)), incremental_csv=raw)
+    with pytest.raises(RuntimeError, match="fresh"):                   # other data span
+        run_grid(m1.iloc[:-60], [cfg], incremental_csv=raw)
+    stale = pd.read_csv(raw)
+    stale["code_hash"] = "0" * 16                                      # rows from other engine code
+    stale.to_csv(raw, index=False)
+    with pytest.raises(RuntimeError, match="fresh"):
+        run_grid(m1, [cfg], incremental_csv=raw)
+    pd.read_csv(raw).drop(columns=list(PROVENANCE_COLUMNS)).to_csv(raw, index=False)
+    with pytest.raises(RuntimeError, match="fresh"):                   # pre-provenance rows
+        run_grid(m1, [cfg], incremental_csv=raw)
+

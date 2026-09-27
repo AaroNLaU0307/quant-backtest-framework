@@ -29,10 +29,15 @@ def return_correlation(rets: Dict[str, pd.Series]) -> Tuple[pd.DataFrame, float,
     """
     R = pd.concat(rets, axis=1).dropna()
     C = R.corr()
-    ev = np.linalg.eigvalsh(C.to_numpy())
-    ev = np.sort(ev[ev > 1e-12])[::-1]
-    n_eff = float((ev.sum() ** 2) / np.square(ev).sum())
+    n_eff, ev = participation_ratio(C.to_numpy())
     return C, n_eff, ev
+
+
+def participation_ratio(corr: np.ndarray) -> tuple[float, np.ndarray]:
+    """``N_eff = (Σλ)^2 / Σλ^2`` over the positive eigenvalues of a correlation matrix -> (N_eff, λ desc)."""
+    ev = np.linalg.eigvalsh(np.asarray(corr, dtype=float))
+    ev = np.sort(ev[ev > 1e-12])[::-1]
+    return float((ev.sum() ** 2) / np.square(ev).sum()), ev
 
 
 # --------------------------------------------------------------------------- #
@@ -140,3 +145,24 @@ def cross_bh_fdr(tables: Dict[str, pd.DataFrame], alpha: float = 0.05) -> Tuple[
     cells["bh_reject_global"] = reject
     cells["bh_crit_p"] = crit
     return cells, int(reject.sum()), float(crit)
+
+
+# --------------------------------------------------------------------------- #
+# Real-trade stop-out check (per instrument, from the grid master tables)
+# --------------------------------------------------------------------------- #
+def stopout_summary(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Per instrument: how the per-config median full stop-out R is spread across the grid.
+
+    Reads the ``n_stop_exits`` / ``median_stop_R`` columns written by :func:`mtf_smc.grid.run_grid`.
+    A stop-out books about -1R minus the instrument's spread, commission and stop slippage, so values
+    far below -1 on one instrument flag a mis-scaled cost constant.
+    """
+    rows = []
+    for sym, df in tables.items():
+        med = df.loc[df["n_stop_exits"] > 0, "median_stop_R"].astype(float)
+        rows.append({"instrument": sym, "n_configs": int(med.size),
+                     "n_stop_exits": int(df["n_stop_exits"].sum()),
+                     "min_config_median_stop_R": float(med.min()) if med.size else float("nan"),
+                     "median_config_median_stop_R": float(med.median()) if med.size else float("nan"),
+                     "max_config_median_stop_R": float(med.max()) if med.size else float("nan")})
+    return pd.DataFrame(rows).set_index("instrument")

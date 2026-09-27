@@ -35,8 +35,9 @@ def main() -> None:
             v = M[i, j]
             ax.text(j, i, f"{v:+.2f}", ha="center", va="center", fontsize=5.2,
                     color="black" if abs(v) < 0.55 else "white")
+    n_multi = int((cons["n_pos_sig"] >= 2).sum())
     ax.set_title("Per-instrument expectancy E[R]  (42 configs x 5 instruments, IS 2015-2022)\n"
-                 "0/42 positive-and-significant on >=2 independent instruments", fontsize=9)
+                 f"{n_multi}/{len(cons)} positive-and-significant on >=2 independent instruments", fontsize=9)
     cb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     cb.set_label("E[R] per trade (clipped +/-0.75)", fontsize=8)
     fig.tight_layout()

@@ -17,14 +17,18 @@ INDEPENDENT, so they are precomputed once per (window-span) and reused across th
 OBSERVABILITY: every window AND every grid cell flushes one line to ``progress.txt`` (immediately, fsync'd)
 so a hang/death is visible within one cell (~seconds), not hours. Poll that file directly. Each window is
 wrapped so a single failure logs a traceback and is skipped rather than killing the whole run. Resumable:
-one row per (symbol, window) appended to walkforward_windows.csv; re-running skips finished windows.
+one row per (symbol, window) appended to walkforward_windows.csv; re-running skips finished windows. Each
+row carries git_commit / code_hash / config_hash (mtf_smc.provenance); resuming onto rows from other
+engine code or another configuration raises — pass ``fresh`` to start over.
 
-    .venv\\Scripts\\python scripts\\run_legacy_walkforward.py     # tail -f output/legacy_walkforward/progress.txt
+    python scripts/run_legacy_walkforward.py fresh     # tail -f output/legacy_walkforward/progress.txt
+    python scripts/run_legacy_walkforward.py           # resume
 """
 from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 import traceback
 from dataclasses import replace
@@ -37,6 +41,7 @@ from mtf_smc.config import DataConfig, StrategyConfig
 from mtf_smc.data.loader import load_is
 from mtf_smc.engine.backtester import simulate
 from mtf_smc.engine.costs import CostModel
+from mtf_smc.provenance import PROVENANCE_COLUMNS, code_hash, provenance
 from mtf_smc.risk.instrument import get_instrument
 from mtf_smc.strategy.context import build_context
 from mtf_smc.strategy.entries import generate_setups, precompute_legacy_triggers
@@ -86,14 +91,30 @@ def _mean_r(trades, lo, hi):
     return (float(R.mean()) if len(R) else float("nan")), len(R), R
 
 
-def _done() -> set:
+def _provenance(symbol: str, base: StrategyConfig) -> dict:
+    """Provenance columns for one symbol's windows (config hash covers the WF design too)."""
+    inst = get_instrument(symbol)
+    design = {"grid": GRID, "is_months": IS_MONTHS, "oos_months": OOS_MONTHS,
+              "step_months": STEP_MONTHS, "min_is_trades": MIN_IS_TRADES}
+    return provenance(base, inst, CostModel(inst), design)
+
+
+def _done(expected: dict) -> set:
+    """Finished (symbol, oos_start) windows; refuses rows from other engine code or configuration."""
     if not os.path.exists(WIN_CSV):
         return set()
-    df = pd.read_csv(WIN_CSV)
+    df = pd.read_csv(WIN_CSV, dtype={c: str for c in PROVENANCE_COLUMNS})
+    missing = [c for c in PROVENANCE_COLUMNS if c not in df.columns]
+    if missing:
+        raise RuntimeError(f"{WIN_CSV} has no provenance columns {missing}; rerun with `fresh`.")
+    stale = (df["code_hash"] != code_hash()) | (df["config_hash"] != df["symbol"].map(expected))
+    if stale.any():
+        raise RuntimeError(f"{WIN_CSV} holds windows from different engine code or configuration; "
+                           f"rerun with `fresh`.")
     return {(r["symbol"], str(r["oos_start"])) for _, r in df.iterrows()}
 
 
-def run_window(symbol, m1, inst, cost, base, is_start, is_end, oos_end, tag) -> dict:
+def run_window(symbol, m1, inst, cost, base, is_start, is_end, oos_end, tag, prov) -> dict:
     is_m1 = m1.loc[(m1.index >= is_start) & (m1.index < is_end)]
     full_m1 = m1.loc[(m1.index >= is_start) & (m1.index < oos_end)]
 
@@ -127,7 +148,7 @@ def run_window(symbol, m1, inst, cost, base, is_start, is_end, oos_end, tag) -> 
     return dict(symbol=symbol, is_start=str(is_start.date()), oos_start=str(is_end.date()),
                 oos_end=str(oos_end.date()), best=json.dumps(best), is_r=round(best_r, 3), is_n=best_n,
                 oos_r=round(oos_r, 3) if not np.isnan(oos_r) else "", oos_n=oos_n,
-                oos_R_json=json.dumps([round(x, 4) for x in oos_R.tolist()]))
+                oos_R_json=json.dumps([round(x, 4) for x in oos_R.tolist()]), **prov)
 
 
 def main() -> None:
@@ -135,11 +156,16 @@ def main() -> None:
     # goes idle: run in short FOREGROUND bursts that exit cleanly after WF_MAX_WINDOWS completed windows
     # (default: no cap). WF_SYMBOLS scopes the run (e.g. XAUUSD first, then EURUSD). Resume stitches them.
     os.makedirs(OUT, exist_ok=True)
+    if "fresh" in sys.argv[1:]:                      # clean start (else resume from WIN_CSV)
+        for f in (WIN_CSV, PROGRESS):
+            if os.path.exists(f):
+                os.remove(f)
     syms = tuple(s for s in os.environ.get("WF_SYMBOLS", ",".join(SYMBOLS)).split(",") if s)
     max_windows = int(os.environ.get("WF_MAX_WINDOWS", "0")) or None
-    done = _done()
-    _log(f"=== WF start; symbols={syms} max_windows={max_windows}; {len(done)} windows already done ===")
     base = StrategyConfig.legacy_d1h1m5()
+    prov = {s: _provenance(s, base) for s in dict.fromkeys(SYMBOLS + syms)}
+    done = _done({s: p["config_hash"] for s, p in prov.items()})
+    _log(f"=== WF start; symbols={syms} max_windows={max_windows}; {len(done)} windows already done ===")
     processed = 0
 
     for symbol in syms:
@@ -155,7 +181,7 @@ def main() -> None:
             tag = f"[{symbol} {j}/{len(wins)} {is_start.date()}..{oos_end.date()}]"
             wt = time.time()
             try:
-                row = run_window(symbol, m1, inst, cost, base, is_start, is_end, oos_end, tag)
+                row = run_window(symbol, m1, inst, cost, base, is_start, is_end, oos_end, tag, prov[symbol])
             except Exception:
                 _log(f"{tag} ERROR:\n{traceback.format_exc()}")
                 continue

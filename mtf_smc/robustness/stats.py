@@ -1,9 +1,24 @@
 """Inference & multiple-testing: bootstrap CIs, p-values, drop-1, PSR, DSR, BH-FDR. ``docs/SPEC.md`` §8.
 
-PSR/DSR (Bailey & López de Prado) operate on the **per-period** Sharpe (our daily business-day MTM
-convention, *not* annualized) with ``n`` = number of daily returns and the returns' skew/kurtosis.
-The Deflated Sharpe feeds in the **trial count (42)** and the cross-config Sharpe variance, so the
-significance bar rises with the breadth of the search.
+Provenance: written in this repository (not vendored from another project). Conventions:
+
+* **BH-FDR** (:func:`benjamini_hochberg`): standard Benjamini–Hochberg step-up, default level
+  **alpha = 0.05** — used for the 42-config within-instrument family and the 210-cell cross-instrument
+  family.
+* **Expectancy CI** (:func:`bootstrap_mean_ci`): iid percentile bootstrap of the mean, 10,000 resamples
+  by default (the grid passes 5,000), seed 7. :func:`mean_positive_pvalue` is the fraction of those
+  bootstrap means <= 0 (a one-sided bootstrap p; the resampling is not centred on the null).
+* **Clustered observations** (:func:`block_bootstrap_mean_ci`): percentile bootstrap that resamples
+  whole blocks (e.g. walk-forward windows), 10,000 resamples, seed 7. :func:`sign_test_pvalue` is the
+  exact one-sided binomial sign test; its units must be independent.
+* **PSR/DSR** (Bailey & López de Prado) operate on the **per-period** Sharpe (daily, business-day
+  equity: realized equity carried forward between trade exits, not marked to market; *not*
+  annualized) with ``n`` = number of daily returns and the returns' skew/kurtosis. The Deflated
+  Sharpe feeds in the **trial count (42)** and the cross-config Sharpe variance, so the significance
+  bar rises with the breadth of the search.
+
+Every function here is hash-pinned in ``tests/test_stats_provenance.py``: an edit must update the
+pinned hash there, so no helper changes silently.
 """
 from __future__ import annotations
 
@@ -50,6 +65,32 @@ def ttest_mean_positive_pvalue(x: Sequence[float]) -> float:
         return float("nan")
     t, p_two = sps.ttest_1samp(a, 0.0)
     return float(p_two / 2 if t > 0 else 1 - p_two / 2)
+
+
+def block_bootstrap_mean_ci(blocks: Sequence[Sequence[float]], n_boot: int = 10_000,
+                            seed: int = 7) -> tuple[float, float]:
+    """95% percentile CI of the pooled mean, resampling whole blocks (clusters) with replacement.
+
+    Each replicate draws ``k`` of the ``k`` non-empty blocks, pools their observations and takes the
+    mean, so correlation *within* a block is kept. Blocks themselves are treated as independent.
+    Returns ``(lo, hi)``; NaNs when there is no non-empty block.
+    """
+    arrays = [a for a in (np.asarray(list(b), dtype=float) for b in blocks) if a.size]
+    if not arrays:
+        return float("nan"), float("nan")
+    rng = np.random.default_rng(seed)
+    k = len(arrays)
+    means = np.empty(n_boot)
+    for b in range(n_boot):
+        means[b] = np.concatenate([arrays[i] for i in rng.integers(0, k, k)]).mean()
+    return float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
+
+
+def sign_test_pvalue(n_neg: int, n: int) -> float:
+    """Exact one-sided sign test: P(>= ``n_neg`` negatives out of ``n`` | each sign a fair coin)."""
+    if n <= 0:
+        return float("nan")
+    return sum(math.comb(n, k) for k in range(n_neg, n + 1)) / (2 ** n)
 
 
 def drop_one_expectancy(R: Sequence[float]) -> Dict[str, float]:

@@ -2,10 +2,14 @@
 
 Naive O(M1) loop (no idle-bar skipping). Optionally restrict to a date slice for quick dev runs:
 
-    .venv\\Scripts\\python scripts\\run_grid.py                 # full IS 2015-2022
-    .venv\\Scripts\\python scripts\\run_grid.py 2018:2019       # a slice
+    python scripts/run_grid.py fresh --symbol=EURUSD     # full IS 2015-2022, discard earlier rows
+    python scripts/run_grid.py --symbol=EURUSD           # resume (same code + config only)
+    python scripts/run_grid.py 2018:2019                 # a slice (XAUUSD)
+    python scripts/run_grid.py fresh --symbol=GBPJPY --stop-slip-mult=10   # high-slippage-on-stops
 
-Writes output/grid/master_table.csv and prints the table sorted by expectancy.
+Writes output/grid/[<SYM>/]master_table.csv (XAUUSD keeps output/grid/) and prints the table sorted
+by expectancy. ``--stop-slip-mult=K`` runs the SPEC §6.5 sensitivity (stop-exit slippage x K) into a
+``stopslip_xK/`` subdirectory instead.
 """
 from __future__ import annotations
 
@@ -16,7 +20,7 @@ import pandas as pd
 
 from mtf_smc.config import REPO_ROOT, DataConfig
 from mtf_smc.data.loader import load_is
-from mtf_smc.engine.costs import CostModel
+from mtf_smc.engine.costs import CostModel, high_slippage_on_stops
 from mtf_smc.grid import apply_multiple_testing, enumerate_primary_grid, run_grid
 from mtf_smc.risk.instrument import get_instrument
 
@@ -38,6 +42,11 @@ def main() -> None:
     # XAUUSD keeps the original output/grid/ path (the bit-identical regression target);
     # replication instruments write to output/grid/<symbol>/.
     out_dir = REPO_ROOT / "output" / "grid" if symbol == "XAUUSD" else REPO_ROOT / "output" / "grid" / symbol
+    cost = CostModel(inst)
+    slip_mult = next((float(a.split("=", 1)[1]) for a in sys.argv[1:] if a.startswith("--stop-slip-mult=")), None)
+    if slip_mult is not None:
+        cost = high_slippage_on_stops(cost, slip_mult)
+        out_dir = out_dir / f"stopslip_x{slip_mult:g}"
     out_dir.mkdir(parents=True, exist_ok=True)
     raw = out_dir / "master_raw.csv"
     prog = out_dir / "progress.log"
@@ -49,7 +58,7 @@ def main() -> None:
     print(f"progress -> {prog}   (poll this file)\n")
 
     t0 = time.time()
-    df = run_grid(m1, configs, instrument=inst, cost=CostModel(inst),
+    df = run_grid(m1, configs, instrument=inst, cost=cost,
                   verbose=True, progress_file=prog, incremental_csv=raw)
     df = apply_multiple_testing(df, n_trials=len(configs))
     print(f"\ndone in {time.time() - t0:.0f}s")

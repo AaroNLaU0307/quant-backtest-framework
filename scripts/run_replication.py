@@ -3,12 +3,17 @@
 Per-instrument E[R] side-by-side (config x instrument), cross-instrument return correlation +
 effective number of independent instruments, a correlation-aware random-effects pool, and a
 cross-(config x instrument) BH-FDR over the full trial set. The replication question: does any config
-land positive-AND-significant on multiple *independent* instruments? Writes output/replication/* and
-docs/REPLICATION.md. See docs/SPEC_multi_instrument.md §6.
+land positive-AND-significant on multiple *independent* instruments? Writes output/replication/*
+(including stopouts.csv, the real-trade stop-out check, and provenance.json) and docs/REPLICATION.md.
+See docs/SPEC_multi_instrument.md §6. The five master tables must come from one engine version (one
+``code_hash``); mixing grids from different engine code raises.
 
-    .venv\\Scripts\\python scripts\\run_replication.py
+    python scripts/run_replication.py
 """
 from __future__ import annotations
+
+import hashlib
+import json
 
 import numpy as np
 import pandas as pd
@@ -16,6 +21,7 @@ import pandas as pd
 from mtf_smc.config import REPO_ROOT, DataConfig
 from mtf_smc.data.loader import load_is
 from mtf_smc.data.resample import resample_ohlc
+from mtf_smc.provenance import PROVENANCE_COLUMNS, code_hash, git_commit
 from mtf_smc.robustness import replication as rep
 
 pd.set_option("display.width", 200)
@@ -33,12 +39,29 @@ def _md(df: pd.DataFrame, fmt: str = "{:.3f}") -> str:
     return "\n".join(rows)
 
 
+def _table_path(sym: str):
+    return REPO_ROOT / "output" / "grid" / ("master_table.csv" if sym == "XAUUSD" else f"{sym}/master_table.csv")
+
+
 def load_tables() -> dict:
-    t = {}
-    for s in SYMS:
-        rel = "master_table.csv" if s == "XAUUSD" else f"{s}/master_table.csv"
-        t[s] = pd.read_csv(REPO_ROOT / "output" / "grid" / rel)
-    return t
+    return {s: pd.read_csv(_table_path(s), dtype={c: str for c in PROVENANCE_COLUMNS}) for s in SYMS}
+
+
+def input_provenance(tables: dict) -> dict:
+    """Provenance of the inputs; raises unless all five grids came from one engine version."""
+    inputs, codes = {}, set()
+    for s, df in tables.items():
+        if "code_hash" not in df.columns:
+            raise RuntimeError(f"{_table_path(s)} has no provenance columns; rerun its grid "
+                               f"(scripts/run_grid.py fresh --symbol={s}).")
+        codes |= set(df["code_hash"])
+        inputs[s] = {"code_hash": sorted(set(df["code_hash"])), "git_commit": sorted(set(df["git_commit"])),
+                     "sha256": hashlib.sha256(_table_path(s).read_bytes()).hexdigest()}
+    if len(codes) != 1:
+        raise RuntimeError(f"master tables come from different engine code {sorted(codes)}; "
+                           f"rerun the stale grids with `fresh`.")
+    return {"git_commit": git_commit(), "code_hash": code_hash(), "grid_code_hash": codes.pop(),
+            "inputs": inputs}
 
 
 def daily_returns() -> dict:
@@ -53,6 +76,7 @@ def main() -> None:
     out = REPO_ROOT / "output" / "replication"
     out.mkdir(parents=True, exist_ok=True)
     tables = load_tables()
+    prov = input_provenance(tables)
 
     # 1) Cross-instrument correlation + effective # independent instruments (mandatory pre-pooling).
     C, n_eff, ev = rep.return_correlation(daily_returns())
@@ -71,6 +95,9 @@ def main() -> None:
     cons.to_csv(out / "consistency.csv")
     meta.to_csv(out / "meta_random_effects.csv")
     cells.to_csv(out / "cross_cells.csv", index=False)
+    stops = rep.stopout_summary(tables)
+    stops.to_csv(out / "stopouts.csv")
+    (out / "provenance.json").write_text(json.dumps(prov, indent=2) + "\n", encoding="utf-8")
 
     # within-instrument BH survivors (per instrument)
     per_inst_sig = {s: int(df["bh_reject"].astype(bool).sum()) for s, df in tables.items()}
@@ -90,20 +117,24 @@ def main() -> None:
     print(cons.head(8).to_string())
     print("\n=== correlation-aware random-effects pool (top 6 by pooled E[R]) ===")
     print(meta.head(6)[["k", "pooled", "se", "ci_lo", "ci_hi", "p_one_sided", "I2"]].round(3).to_string())
+    print("\n=== real-trade stop-outs: per-config median full stop-out R, spread across the 42 configs ===")
+    print(stops.round(3).to_string())
 
     _write_markdown(out, tables, C, n_eff, var_infl, er, ntr, cons, meta,
-                    per_inst_sig, n_pos_sig_any, n_multi, n_rej, len(cells), crit)
+                    per_inst_sig, n_pos_sig_any, n_multi, n_rej, len(cells), crit, prov)
     print(f"\nwrote {out/'*.csv'} and docs/REPLICATION.md")
 
 
 def _write_markdown(out, tables, C, n_eff, var_infl, er, ntr, cons, meta,
-                    per_inst_sig, n_pos_sig_any, n_multi, n_rej, n_cells, crit) -> None:
+                    per_inst_sig, n_pos_sig_any, n_multi, n_rej, n_cells, crit, prov) -> None:
     L = []
     L.append("# Multi-Instrument Replication — MTF-SMC across FX, Metals and Crude\n")
     L.append("> Per-instrument estimates, then consistency across **independent** instruments. "
              "Pooled significance is correlation-aware (deflated by the effective number of "
              "independent instruments); the primary evidence is the consistency count. "
-             "Generated by `scripts/run_replication.py`.\n")
+             f"Generated by `scripts/run_replication.py` (git `{prov['git_commit']}`) from grids run "
+             f"at engine code_hash `{prov['grid_code_hash']}`; inputs and hashes in "
+             "`output/replication/provenance.json`.\n")
 
     L.append("## Headline\n")
     L.append(f"- Within-instrument BH-FDR survivors (mean R>0): "

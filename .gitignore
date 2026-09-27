@@ -25,7 +25,18 @@ env/
 *.zip
 
 # ---- Run artifacts / generated outputs ----
-/output/
+# output/ is ignored except the derived statistics committed after each full run (scripts/run_all.py):
+# per-config master tables, replication tables, walk-forward windows + summary, random-entry nulls, and
+# the data manifest (content hashes only). Never raw HistData, caches or per-trade logs.
+/output/**
+!/output/**/
+!/output/data_manifest.csv
+!/output/grid/**/master_table.csv
+!/output/replication/*.csv
+!/output/replication/provenance.json
+!/output/legacy_walkforward/walkforward_windows.csv
+!/output/legacy_walkforward/walkforward_summary.txt
+!/output/robustness/random_entry.csv
 /reports/
 *.log
 

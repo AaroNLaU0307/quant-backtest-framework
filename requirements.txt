@@ -1,9 +1,26 @@
 # Runtime + dev dependencies for the MTF-SMC multi-instrument backtest.
-# Developed and tested on Python 3.13.
-numpy>=1.24        # core arrays, Monte-Carlo / bootstrap resampling
-pandas>=2.1        # OHLC frames, tz-aware resample (2.x+ APIs)
-scipy>=1.11        # t-tests, distributions for DSR / PSR, bootstrap helpers
-matplotlib>=3.6    # figures only (engine has no plotting dependency)
-openpyxl>=3.1      # reads HistData .xlsx (read_only + reset_dimensions)
-pyyaml>=6.0        # YAML config grids
-pytest>=7.4        # test suite
+# Python 3.13 (matches CI). Every version is pinned with ==: this file is the lock.
+numpy==2.5.3          # core arrays, Monte-Carlo / bootstrap resampling
+pandas==3.0.6         # OHLC frames, tz-aware resample
+scipy==1.18.1         # t-tests, distributions for DSR / PSR
+matplotlib==3.11.2    # figures only (engine has no plotting dependency)
+openpyxl==3.1.5       # reads HistData .xlsx (read_only + reset_dimensions)
+pyyaml==6.0.3         # YAML config
+pytest==9.1.1         # test suite
+
+# Transitive dependencies, as resolved with the pins above on Python 3.13
+contourpy==1.4.0
+cycler==0.12.1
+et_xmlfile==2.0.0
+fonttools==4.66.0
+iniconfig==2.3.0
+kiwisolver==1.5.1
+packaging==26.3
+pillow==12.3.0
+pluggy==1.6.0
+Pygments==2.21.0
+pyparsing==3.3.3
+python-dateutil==2.9.0.post0
+six==1.17.0
+colorama==0.4.6; sys_platform == "win32"
+tzdata==2026.4; sys_platform == "win32"   # zoneinfo data for the NY-close anchor on Windows

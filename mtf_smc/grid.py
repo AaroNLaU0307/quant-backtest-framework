@@ -23,6 +23,7 @@ from mtf_smc.config import StrategyConfig
 from mtf_smc.engine.backtester import BacktestResult, simulate
 from mtf_smc.engine.costs import CostModel
 from mtf_smc.metrics.performance import summarize_backtest
+from mtf_smc.provenance import PROVENANCE_COLUMNS, code_hash, provenance
 from mtf_smc.risk.instrument import XAUUSD, InstrumentSpec
 from mtf_smc.robustness.stats import (
     benjamini_hochberg, bootstrap_mean_ci, deflated_sharpe_ratio, drop_one_expectancy,
@@ -59,7 +60,33 @@ def _row_for(cfg: StrategyConfig, res: BacktestResult) -> Dict:
     }
     row.update(summarize_backtest(res))
     row.update(_inference(res))
+    row.update(_stopouts(res))
     return row
+
+
+def _stopouts(res: BacktestResult) -> dict[str, float]:
+    """Realized R of full stop-outs (``exit_reason == 'stop'``): count and median.
+
+    The per-instrument cost check on real trades: a stop-out should book about -1R minus that
+    instrument's spread, commission and stop slippage.
+    """
+    df = res.trades_df
+    r = df.loc[df["exit_reason"] == "stop", "R"].to_numpy() if len(df) else np.array([])
+    return {"n_stop_exits": int(r.size), "median_stop_R": float(np.median(r)) if r.size else float("nan")}
+
+
+def _check_resumable(prev: pd.DataFrame, path: Path, expected: dict[str, str]) -> None:
+    """Refuse to resume from rows written by other engine code or another configuration."""
+    missing = [c for c in PROVENANCE_COLUMNS if c not in prev.columns]
+    if missing:
+        raise RuntimeError(f"{path} has no provenance columns {missing} (written before they existed); "
+                           f"rerun with `fresh`.")
+    stale = prev["code_hash"].astype(str) != code_hash()
+    stale |= prev["config_hash"].astype(str) != prev["config_id"].map(expected)
+    if stale.any():
+        ids = ", ".join(prev.loc[stale, "config_id"].astype(str).head(5))
+        raise RuntimeError(f"{path} holds rows from different engine code or configuration ({ids}, ...); "
+                           f"rerun with `fresh`.")
 
 
 def run_grid(
@@ -81,16 +108,22 @@ def run_grid(
     * **flushed progress** — a timestamped line per context-build and per config to ``progress_file``,
       so a hang/death is visible within one config (minutes), not hours.
     * **incremental + resume** — each completed row is appended to ``incremental_csv`` (flushed);
-      configs already present there are skipped, so a death loses only the in-flight config.
+      configs already present there are skipped, so a death loses only the in-flight config. Every
+      row carries ``git_commit`` / ``code_hash`` / ``config_hash`` (:mod:`mtf_smc.provenance`), and a
+      resume from rows written by other engine code or another configuration raises instead of
+      mixing them.
     """
     configs = configs or enumerate_primary_grid()
     instrument = instrument or XAUUSD
     cost = cost or CostModel(instrument)
 
+    span = {"m1_first": str(m1.index[0]), "m1_last": str(m1.index[-1]), "m1_bars": len(m1)} if len(m1) else {}
+    prov = {cfg.config_id: provenance(cfg, instrument, cost, span) for cfg in configs}
     done_ids: set = set()
     existing_rows: List[dict] = []
     if incremental_csv is not None and Path(incremental_csv).exists():
-        prev = pd.read_csv(incremental_csv)
+        prev = pd.read_csv(incremental_csv, dtype={c: str for c in PROVENANCE_COLUMNS})
+        _check_resumable(prev, Path(incremental_csv), {k: v["config_hash"] for k, v in prov.items()})
         done_ids = set(prev["config_id"])
         existing_rows = prev.to_dict("records")
 
@@ -133,6 +166,7 @@ def run_grid(
             res = BacktestResult(config=cfg, trades=trades, equity_curve=equity_curve,
                                  final_equity=final_equity, n_setups=len(setups))
             row = _row_for(cfg, res)
+            row.update(prov[cfg.config_id])
             new_rows.append(row)
             done += 1
             if incremental_csv is not None:

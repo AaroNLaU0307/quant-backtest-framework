@@ -6,9 +6,9 @@ import pytest
 
 from mtf_smc.robustness.montecarlo import equity_path, max_drawdown, monte_carlo
 from mtf_smc.robustness.stats import (
-    benjamini_hochberg, bootstrap_mean_ci, deflated_sharpe_ratio, drop_one_expectancy,
-    expected_max_sharpe, mean_positive_pvalue, probabilistic_sharpe_ratio,
-    ttest_mean_positive_pvalue,
+    benjamini_hochberg, block_bootstrap_mean_ci, bootstrap_mean_ci, deflated_sharpe_ratio,
+    drop_one_expectancy, expected_max_sharpe, mean_positive_pvalue, probabilistic_sharpe_ratio,
+    sign_test_pvalue, ttest_mean_positive_pvalue,
 )
 
 
@@ -68,3 +68,20 @@ def test_benjamini_hochberg():
     reject, crit = benjamini_hochberg([0.001, 0.01, 0.04, 0.2, 0.5], alpha=0.05)
     assert reject.tolist() == [True, True, False, False, False]
     assert crit == pytest.approx(0.01)
+
+
+def test_sign_test_pvalue_exact_binomial():
+    assert sign_test_pvalue(21, 24) == pytest.approx(2325 / 2 ** 24)
+    assert sign_test_pvalue(0, 12) == pytest.approx(1.0)
+    assert sign_test_pvalue(12, 12) == pytest.approx(1 / 2 ** 12)
+
+
+def test_block_bootstrap_is_wider_than_iid_for_clustered_data():
+    rng = np.random.default_rng(3)
+    blocks = [np.full(20, rng.normal()) + rng.normal(0, 0.1, 20) for _ in range(12)]   # strong clusters
+    blo, bhi = block_bootstrap_mean_ci(blocks, n_boot=4000, seed=1)
+    _, lo, hi = bootstrap_mean_ci(np.concatenate(blocks), n_boot=4000, seed=1)
+    assert blo < np.concatenate(blocks).mean() < bhi
+    assert (bhi - blo) > 2 * (hi - lo)
+    assert np.isnan(block_bootstrap_mean_ci([[], []])[0])
+

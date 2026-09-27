@@ -57,3 +57,21 @@ def test_cross_bh_fdr_trial_count():
     assert len(cells) == 4                          # 2 configs x 2 instruments = correct trial count
     assert set(cells["instrument"]) == {"A", "B"}
     assert 0 <= n_rej <= 4
+
+
+def test_participation_ratio_bounds():
+    assert rep.participation_ratio(np.eye(4))[0] == pytest.approx(4.0)
+    assert rep.participation_ratio(np.ones((3, 3)))[0] == pytest.approx(1.0)
+
+
+def test_stopout_summary_reads_grid_stop_columns():
+    a = _tbl([0.1, -0.2, 0.0], [0.5] * 3, [False] * 3)
+    a["n_stop_exits"], a["median_stop_R"] = [10, 0, 5], [-1.03, float("nan"), -1.05]
+    b = _tbl([0.1], [0.5], [False])
+    b["n_stop_exits"], b["median_stop_R"] = [7], [-1.10]
+    out = rep.stopout_summary({"A": a, "B": b})
+    assert out.loc["A", "n_configs"] == 2 and out.loc["A", "n_stop_exits"] == 15
+    assert out.loc["A", "min_config_median_stop_R"] == pytest.approx(-1.05)
+    assert out.loc["A", "max_config_median_stop_R"] == pytest.approx(-1.03)
+    assert out.loc["B", "median_config_median_stop_R"] == pytest.approx(-1.10)
+
