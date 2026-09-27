@@ -76,7 +76,8 @@ correction above):
   (the second, GBPUSD, a marginal +0.14) and negative on the rest; **+1.0 R on GBPJPY** is positive on
   only itself (1 of 5). Neither was significant on any instrument.
 
-By the pre-registered rule, nothing earned an out-of-sample look, so **the locked OOS stays sealed.**
+By the pre-registered rule, nothing earned an out-of-sample look, so no further OOS evaluation was run (the
+XAUUSD 2023–2025 window had already been used once, by the earlier gold study: `docs/REPORT.md` §7).
 
 ![Replication heatmap](assets/replication_heatmap.png)
 

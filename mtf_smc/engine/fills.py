@@ -2,8 +2,8 @@
 
 We never assume the order of a bar's high/low. A resting limit fills only if an M1 bar trades
 *through* its level. When a single bar would hit both stop and take-profit, a conservative tie-break
-(default ``'stop_first'`` / worst case) decides; the optimistic ``'tp_first'`` variant is reported
-as a sensitivity. These are pure primitives; the trade FSM and event loop compose them over the M1
+(default ``'stop_first'`` / worst case) decides. An optimistic ``'tp_first'`` variant exists as a
+primitive here but is not wired into the engine and has not been run or reported. These are pure primitives; the trade FSM and event loop compose them over the M1
 path of each higher-TF bar.
 """
 from __future__ import annotations

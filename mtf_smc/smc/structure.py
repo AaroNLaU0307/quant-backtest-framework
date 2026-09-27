@@ -8,7 +8,7 @@ CHoCH depends on the running structural *bias* set by the previous break:
 * break opposes bias      -> **CHoCH** (reversal), and the bias flips.
 
 The very first break establishes the bias and is labelled **BOS**. Everything uses closed bars and
-right-confirmed swings, so detection is causal and non-repainting (proven by truncation-invariance
+right-confirmed swings, so detection is causal and non-repainting (checked by truncation-invariance
 tests). Higher-level code maps these to the brief's roles: HTF/MTF BOS sets direction; the CHoCH
 that ends a pullback inside the POI is the entry trigger.
 """
