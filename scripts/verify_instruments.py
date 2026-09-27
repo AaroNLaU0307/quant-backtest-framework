@@ -1,6 +1,10 @@
 """Per-instrument R-accounting hand check (multi-instrument calibration): one +3R trade per instrument through the real FSM,
 with the full cost breakdown and an INDEPENDENT recompute from fills. A correct XAUUSD spec does NOT
 imply a correct GBPJPY/WTI spec, so each is verified separately.
+
+It also books one constructed -1R stop-out per instrument: the synthetic stop-out check quoted in the
+docs. That is a single synthetic trade per instrument, not a statistic over real trades; the real-trade
+version comes from the grid (n_stop_exits / median_stop_R -> output/replication/stopouts.csv).
 """
 from __future__ import annotations
 

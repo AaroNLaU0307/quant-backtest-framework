@@ -5,6 +5,10 @@ evidence: plainly, with the number attached, caveats included. Grounded only in 
 [`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md) and [`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md)
 already show; nothing here is a new claim.*
 
+> **Correction (2026-09-27).** The study's numbers quoted below were produced before two look-ahead paths
+> in the engine were fixed; they are pending a re-run. See
+> [`docs/ADDENDUM_2026-09-27.md`](docs/ADDENDUM_2026-09-27.md).
+
 ---
 
 ## "The +2.0 R on gold and +1.0 R on GBPJPY look real — why call this a null result?"
@@ -20,13 +24,15 @@ cannot catch, and exactly why the study was designed around replication rather t
 
 ## "Why three separate falsification lenses instead of one definitive test?"
 
-Because each is a **different way to be wrong**, and they don't overlap: **L1** (walk-forward) optimizes
-*detection thresholds* on a fixed timeframe cascade; **L2** (replication grid) fixes the strategy and
-varies the *config × instrument* grid with multiplicity control; **L3** (random-entry) removes the *entry
-signal* entirely and asks whether structure adds anything over noise. A strategy could pass any one of
-these by luck. All three returning negative — a CI-excluding-zero walk-forward loss, a 0/210 replication
-grid, and indistinguishability from random entries — is a much harder coincidence to explain away than one
-failed test. [`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md) states this design choice up front.
+Because each is a **different way to be wrong**: **L1** (walk-forward) optimizes *detection thresholds*
+on a fixed timeframe cascade; **L2** (replication grid) fixes the strategy and varies the *config ×
+instrument* grid with multiplicity control; **L3** (random-entry) removes the *entry signal* and asks
+whether structure adds anything over random entries. A strategy could pass any one of these by luck. A
+CI-excluding-zero walk-forward loss, a 0/210 replication grid, and entries that beat random ones on
+XAUUSD but not by enough to overcome costs point the same way, which is harder to explain away than one
+failed test. They are not independent, though: all three run on one engine and one IS period, so an
+engine flaw (like the two fixed on 2026-09-27) reaches all three.
+[`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md) states this design choice up front.
 
 ## "L1 only covers EUR+XAU, but L2 covers five instruments — isn't that an inconsistent scope?"
 
@@ -53,10 +59,12 @@ sign-off check only ever exercised a winning trade, which never touches the stop
 response wasn't just a patch: every numeric constant in the detection → indicator → fill/FSM → cost/risk
 path was enumerated and classified as scale-invariant (ATR/pip/tick/R-relative) or absolute-price
 (must come from `InstrumentSpec`). The two offenders (`stop_slippage`, the breakeven buffer) were the
-**only** absolute-price constants found in the whole path. The fix is verified **dynamically, not just by
-inspection**: the median real stop-out is **−1.02 to −1.04 R on all five instruments**, GBPJPY and WTIUSD
+**only** absolute-price constants found in the whole path. The fix is checked **dynamically, not just by
+inspection**, on a synthetic trade: one constructed −1R stop-out per instrument
+(`scripts/verify_instruments.py`) books **−1.02 to −1.04 R on all five instruments**, GBPJPY and WTIUSD
 included, and every instrument now runs a dedicated −1R stop-out assertion in addition to the original
-winning-trade check. [`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md) §3.2–3.3.
+winning-trade check. The median over real grid stop-outs is part of the re-run.
+[`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md) §3.2–3.3.
 
 ## "Why BH-FDR plus a correlation-based effective-*N* deflation, instead of Bonferroni across all 210 trials?"
 
@@ -81,8 +89,9 @@ second, independent reason not to revisit it here.) [`docs/REPORT_MULTI_ASSET.md
 
 Two things, both currently far from met: (1) a configuration **positive-and-significant on at least two
 independent instruments** after the cross-instrument BH-FDR correction — the current count is **0 of
-210**; (2) the L1 walk-forward flipping from **E[R] = −0.339 R, 95% CI [−0.45, −0.22], 21/24 windows
-negative (sign-test p = 0.0001)** to a CI that excludes zero on the *positive* side. Only after both would
+210**; (2) the L1 walk-forward flipping from **E[R] = −0.339 R, window-block 95% CI [−0.436, −0.223],
+21/24 windows negative** to a CI that excludes zero on the *positive* side (both figures predate the
+2026-09-27 fix). Only after both would
 a single, one-time OOS unsealing be warranted. Nothing here is close, and no partial version of either
 condition (e.g. one instrument, one window) is being treated as sufficient.
 

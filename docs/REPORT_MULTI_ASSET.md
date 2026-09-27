@@ -1,8 +1,13 @@
 # Multi-Instrument Replication of an MTF-SMC Strategy across FX, Metals and Crude
 
 **A pre-registered falsification study.** *In-sample 2015–2022 · XAUUSD, EURUSD, GBPUSD, GBPJPY,
-WTIUSD · 42 configurations × 5 instruments = 210 trials · realistic per-instrument costs · proven
-no-look-ahead.*
+WTIUSD · 42 configurations × 5 instruments = 210 trials · realistic per-instrument costs.*
+
+> **Correction (2026-09-27).** Every result in this report was produced before two look-ahead paths in
+> the engine were fixed (take-profit swings used before confirmation; fills resolved after the fill
+> bar's close) and a stop on the fill bar was honoured; all are pending a re-run. The effective number
+> of independent instruments (§4) does not depend on the engine. See
+> [`ADDENDUM_2026-09-27.md`](ADDENDUM_2026-09-27.md).
 
 ## Abstract
 
@@ -98,8 +103,11 @@ absolute-price constants in the whole path; everything else — stops (`swing ±
 size filter (`× ATR`), structure breaks (close beyond a swing, no minimum-size threshold), Fib zones
 (ratios), fills (pure level comparisons) — is scale-invariant by construction. The only residual
 absolute numerics are `1e-9` float epsilons on *dimensionless* comparisons (negligible vs scale on every
-instrument). **Verified dynamically:** the median real stop-out is **−1.14 to −1.23 R on all five
-instruments**, GBPJPY and WTIUSD included.
+instrument). **Checked dynamically, on a synthetic trade:** `scripts/verify_instruments.py` pushes one
+constructed −1R stop-out per instrument through the trade state machine and books **−1.02 to −1.04 R on
+all five** (XAUUSD −1.022, EURUSD −1.030, GBPUSD −1.033, GBPJPY −1.041, WTIUSD −1.025), GBPJPY and
+WTIUSD included. That is one synthetic trade per instrument, not a statistic over real trades; the
+median over real grid stop-outs is part of the re-run (`output/replication/stopouts.csv`).
 
 **3.4 Cost-dependence sub-question, answered.** The single-instrument finding that "M1-LTF cascades are
 killed by costs" was cost-driven, so it might not have generalized. It does: the M1-LTF cascades are
@@ -193,7 +201,8 @@ no replicable edge and must not be traded.
 
 **Reproduction.** `python scripts/ingest_instruments.py` (build per-instrument caches) →
 `python scripts/run_grid.py fresh --symbol=<SYM>` for each instrument → `python scripts/run_replication.py`
-(replication grid, correlation, meta-analysis, cross-correction) → `python scripts/make_replication_figure.py`.
+(replication grid, correlation, meta-analysis, cross-correction) → `python scripts/make_replication_figure.py`;
+or every stage in order with `python scripts/run_all.py` (see [`RERUN_RUNBOOK.md`](../RERUN_RUNBOOK.md)).
 Fixed seeds; per-instrument configs and assumptions in [`SPEC_multi_instrument.md`](SPEC_multi_instrument.md);
 no licensed data committed. All detection/accounting invariants are covered by the test suite
 (`python -m pytest -q`).

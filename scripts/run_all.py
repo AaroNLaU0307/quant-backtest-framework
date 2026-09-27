@@ -21,7 +21,7 @@ Stages (default = all but ``stopslip``):
   wf_report    scripts/run_legacy_walkforward_report.py
   robustness   scripts/run_robustness.py 1000 (L3 random-entry nulls, XAUUSD survivors)
   figures      scripts/make_replication_figure.py and scripts/make_figures.py (assets/*.png)
-  stopslip     optional: the high-slippage-on-stops grids (x10) on GBPJPY and WTIUSD
+  stopslip     optional: the high-slippage-on-stops grids (stop slippage x10) on XAUUSD, GBPJPY, WTIUSD
 
 A committed ``output/data_manifest.csv`` pins the data: if an in-sample frame hashes differently, the
 check stage stops (pass ``--allow-data-change`` to overwrite the manifest deliberately).
@@ -45,7 +45,7 @@ STAGES = ("check", "grids", "replication", "walkforward", "wf_report", "robustne
 DEFAULT_STAGES = STAGES[:-1]
 MANIFEST = REPO_ROOT / "output" / "data_manifest.csv"
 N_NULL = 1000                      # report-grade random-entry nulls (docs/SPEC.md §8: >= 1000)
-STOPSLIP_SYMBOLS = ("GBPJPY", "WTIUSD")
+STOPSLIP_SYMBOLS = ("XAUUSD", "GBPJPY", "WTIUSD")   # SPEC §6.5 (gold) + SPEC_multi_instrument §6
 
 
 def frame_sha256(df: pd.DataFrame) -> str:

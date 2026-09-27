@@ -2,9 +2,14 @@
 
 **Verdict: No confirmable edge.** Across 42 pre-registered structural variants of a top-down
 Smart-Money-Concepts (SMC) strategy on gold, evaluated 2015–2022 in-sample with realistic costs,
-proven zero look-ahead, Monte-Carlo, a two-null random-entry benchmark, walk-forward, and
+look-ahead tests, Monte-Carlo, a two-null random-entry benchmark, walk-forward, and
 Benjamini–Hochberg + Deflated-Sharpe correction, **no configuration shows a statistically real edge**,
 and a single pre-registered out-of-sample evaluation (2023–2025) does not change that conclusion.
+
+> **Correction (2026-09-27).** Every number in this report was produced before two look-ahead paths in
+> the engine were fixed (take-profit swings used before confirmation; fills resolved after the fill
+> bar's close) and a stop on the fill bar was honoured; all in-sample figures are pending a re-run, and
+> the one-time OOS figure (§7) is not recomputed. See [`ADDENDUM_2026-09-27.md`](ADDENDUM_2026-09-27.md).
 
 ---
 
@@ -39,11 +44,13 @@ direct `2 htf × 3 tp = 6`. The trial count (42) is fed explicitly into the mult
 correction. Secondary ablations are reserved for strong survivors — of which there are none.
 
 ## 4. Methodology — why the numbers are trustworthy
-- **Zero look-ahead, proven (not asserted).** Higher-TF data is right-aligned (`shift(1)` /
-  `closed_asof`) so a decision at `t` sees only bars closed by `t`. Every fragile detector has a
-  **truncation-invariance test**: recomputing on the prefix `[0..i]` must reproduce history exactly.
-  The engine has an end-to-end no-look-ahead test (trades resolved within a prefix are unchanged when
-  the future is deleted).
+- **Look-ahead tests.** Higher-TF reads are gated on each bar's close time, so a decision at `t` is
+  meant to see only bars closed by `t`. ATR, EMA, swings, FVG and structure have
+  **truncation-invariance tests** (recomputing on the prefix `[0..i]` must reproduce history exactly),
+  and an end-to-end test on real data checks that trades resolved within a prefix are unchanged when
+  the future is deleted. Two paths were not covered and did look ahead — the take-profit swing target
+  and the order of fill vs. close-based invalidation — and were fixed on 2026-09-27 (see the correction
+  above); the tests now cover them.
 - **Intrabar fills on M1.** Limit fills, stops, take-profits, breakeven moves, and scale-outs are
   resolved by stepping the underlying M1 bars; a documented **same-bar SL/TP tie-break** (stop-first,
   worst case). A limit fills only if M1 actually trades through it.
@@ -123,7 +130,7 @@ data point, not a discovered edge.
 
 ## 8. Limitations
 - **Spread/slippage are modelled** (raw OHLC carries none); swap timing is an approximate placeholder.
-  Conclusions are robust to the high-slippage-on-stops sensitivity but assume retail-ECN-like costs.
+  Conclusions assume retail-ECN-like costs.
 - **Single instrument.** Professional trend/structure trading is multi-asset and diversified; this
   studies XAUUSD alone.
 - **SMC discretion is operationalized into specific testable rules** (`docs/SPEC.md`). Other defensible

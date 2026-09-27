@@ -1,23 +1,28 @@
 # MTF-SMC under Three Falsification Lenses — Unified Report
 
 *In-sample 2015–2022 (sealed OOS 2023–2025 untouched) · XAUUSD, EURUSD, GBPUSD, GBPJPY, WTIUSD ·
-proven no-look-ahead · realistic per-instrument costs.*
+realistic per-instrument costs.*
+
+> **Correction (2026-09-27).** Every number in this report was produced before two look-ahead paths in
+> the engine were fixed (take-profit swings used before confirmation; fills resolved after the fill
+> bar's close) and a stop on the fill bar was honoured; all are pending a re-run. See
+> [`ADDENDUM_2026-09-27.md`](ADDENDUM_2026-09-27.md).
 
 This report unifies two previously separate efforts — a **single-instrument repo** that walk-forward-tested
 a discretionary MTF-SMC strategy, and this **multi-instrument repo** that pre-registered a 42-configuration
-replication grid — onto **one engine** (`mtf_smc/`). The merged question is asked through **three disjoint
+replication grid — onto **one engine** (`mtf_smc/`). The merged question is asked through **three complementary
 lenses**, each a different way to be wrong:
 
 | Lens | Method | Result |
 |---|---|---|
-| **L1 — Walk-forward OOS** | Optimize the legacy detection-threshold space on a *fixed* D1→H1→M5, roll IS18/OOS6 | **E[R] = −0.339 R**, 95% CI **[−0.45, −0.22]**, 21/24 windows negative |
+| **L1 — Walk-forward OOS** | Optimize the legacy detection-threshold space on a *fixed* D1→H1→M5, roll IS18/OOS6 | **E[R] = −0.339 R**, window-block 95% CI **[−0.436, −0.223]**, 21/24 windows negative |
 | **L2 — Replication grid** | 42 pre-registered configs × 5 instruments, BH-FDR + correlation-aware meta | **0 / 210** survive; pooled **−0.000 R** |
-| **L3 — Random-entry nulls** | Two random-entry controls per instrument on IS survivors | strategy **indistinguishable from random** |
+| **L3 — Random-entry nulls** | Two random-entry controls on the XAUUSD IS survivors (XAUUSD only) | **better than random entries, but not enough to overcome costs** |
 
-The lenses are deliberately **non-overlapping**: L1 optimizes *detection thresholds* on two instruments;
-L2 fixes the strategy and varies the *config grid* across five instruments with multiplicity control; L3
-removes the *entry signal* entirely. **All three return negative.** A finding that survives three
-independent ways of trying to break it is a far stronger falsification than any single test.
+The lenses ask different questions: L1 optimizes *detection thresholds* on two instruments; L2 fixes the
+strategy and varies the *config grid* across five instruments with multiplicity control; L3 removes the
+*entry signal* and asks whether the structure beats random entries. They share one engine and one IS
+period, so an engine flaw reaches all three. **None finds an edge that survives costs.**
 
 ---
 
@@ -40,18 +45,20 @@ ALL pooled (EUR+XAU)  E[R] = -0.339   95% CI [-0.446, -0.223]   significantly NE
   IS->OOS mean gap = +0.387            (the IS optimum overfits and collapses out-of-sample)
 ```
 
-**Robustness of the negative.** Because the windows overlap and trades within a window are correlated, the
-naive trade-level bootstrap CI is *optimistically narrow*. A **block bootstrap by window** (resampling
-whole windows) gives essentially the same interval, **[−0.436, −0.223]** — still excluding zero. And the
-conclusion does not rest on any CI at all: **21 of 24 windows are negative** (median window −0.350), a
-**sign-test p = 0.0001**. The IS-best parameters drift toward the *loosest* filter (`score = 1`) and then
-fail OOS — the textbook overfit signature, quantified by the **+0.39 R IS→OOS gap**.
+**Robustness of the negative.** Trades within a window are correlated, so the trade-level bootstrap CI
+above is *optimistically narrow*. The headline interval is the **block bootstrap by window** (resampling
+whole windows): **[−0.436, −0.223]** — still excluding zero. (One instrument's OOS windows do not
+overlap — the step equals the OOS length — only its IS windows do.) **21 of 24 windows are negative**
+(median window −0.350), but XAUUSD and EURUSD roll the same 12 calendar periods, so those are not 24
+independent signs; the sign test runs on the 12 calendar periods and its result is pending the re-run.
+The IS-best parameters drift toward the *loosest* filter (`score = 1`) and then fail OOS — the textbook
+overfit signature, quantified by the **+0.39 R IS→OOS gap**.
 
-**Old → new.** The earlier-engine −0.27 R becomes **−0.339 R** on the more rigorous engine
+**Old → new.** The earlier-engine −0.27 R becomes **−0.339 R** on the unified engine
 (DST-anchored NY-close D1/W1, intrabar-M1 fills, per-fill cost attribution, Wilder ATR). Same sign, same
-verdict — *no robust edge* — now with a confidence interval that cleanly excludes zero. The honest engine
-does not rescue the strategy; it confirms the null more sharply. This is the intended **"old strategy,
-better engine"** outcome.
+verdict — *no robust edge* — now with a confidence interval that excludes zero. That engine still had the
+two look-ahead paths corrected on 2026-09-27 (the L1 target is the nearest D1 swing), so this figure is
+pending the re-run.
 
 > **Span note.** The new walk-forward lives entirely inside the sealed-wall IS span **2015–2022**; the old
 > run rolled into 2023 (it had no sealed OOS). The updated number is therefore on a slightly shorter span,
@@ -78,7 +85,7 @@ bytecode disabled) and comparing, on XAUUSD 2019–2021:
 
 ## L2 — Pre-registered multi-instrument replication
 
-Unchanged and definitive: **0 / 42** configurations are positive-and-significant on even one instrument
+Unchanged by the merge: **0 / 42** configurations are positive-and-significant on even one instrument
 after within-instrument BH-FDR; **0 / 42** on two or more; **0 / 210** (config × instrument) cells survive
 the cross-instrument BH-FDR; best correlation-aware random-effects pooled expectancy **−0.000 R**
 (one-sided p ≥ 0.50). Five instruments are deflated to an **effective 3.45 independent** by the
@@ -87,9 +94,13 @@ tables: [`REPLICATION.md`](REPLICATION.md).
 
 ## L3 — Random-entry nulls
 
-On the IS survivors, two random-entry controls (matched trade count / holding time) place the strategy's
-expectancy **inside the random-entry distribution** — the structured entries add no edge over noise.
-See [`REPORT.md`](REPORT.md) and `docs/SPEC.md` §8.
+Run on XAUUSD only, on the least-negative IS survivors: two random-entry controls (unconstrained and
+bias-matched; matched trade count, stop distances and holding times). The strategy's per-trade E[R] is
+*less negative* than both nulls — e.g. +0.142 R (`cascade_W1_H1_M5_fixed_3R`) and +0.354 R
+(`cascade_W1_H4_M1_HTF_level`) over the bias-matched null — an upper bound, because the holding-time
+match is imperfect. So the structure picks **better-than-random entries, but not by enough to overcome
+costs**: the strategy stays net-negative. No null percentile was published; the re-run writes them to
+`output/robustness/random_entry.csv`. See [`REPORT.md`](REPORT.md) §6 and `docs/SPEC.md` §8.
 
 ---
 
@@ -115,8 +126,9 @@ predetermined). **Listed as future work.**
 
 ## Conclusion
 
-Three disjoint falsification lenses — a detection-threshold **walk-forward** (−0.339 R, CI excludes zero,
-21/24 windows negative), a multiple-testing-corrected **multi-instrument replication** (0/210), and a
-**random-entry** control (indistinguishable from noise) — all return the same verdict: **the MTF-SMC
-strategy carries no replicable, out-of-sample edge.** The locked OOS (2023–2025) stays sealed; by the
-pre-registered rule nothing earned a look. A negative this robust to *how* you test it is the contribution.
+Three complementary falsification lenses — a detection-threshold **walk-forward** (−0.339 R, block CI
+excludes zero, 21/24 windows negative), a multiple-testing-corrected **multi-instrument replication**
+(0/210), and a **random-entry** control (XAUUSD: better than random entries, not enough to overcome
+costs) — all point to the same verdict: **the MTF-SMC strategy carries no replicable, out-of-sample
+edge.** These results come from the engine before the 2026-09-27 fixes and are pending a re-run. The
+locked OOS (2023–2025) stays sealed; by the pre-registered rule nothing earned a look.
