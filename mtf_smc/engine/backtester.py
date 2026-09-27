@@ -4,8 +4,12 @@ A single forward pass over the M1 series. Per bar, in order:
   1. **Manage** open positions (opened on earlier bars) via :meth:`Position.on_bar`.
   2. **Activate** setups whose decision time is this bar (place a resting limit, subject to the
      one-per-direction concurrency rule).
-  3. **Resolve pending orders**: cancel on expiry/invalidation; otherwise fill if the bar trades
-     through the limit (sizing off *current* equity), opening a position managed from the next bar.
+  3. **Resolve pending orders**: cancel on expiry; fill if the bar trades through the limit (sizing
+     off *current* equity). The fill is resolved **before** the bar's close is consulted: the
+     close-based invalidation cancels only orders this bar did not touch, because an intrabar fill
+     happens before the close is known. A stop inside the fill bar's range is assumed hit after the
+     fill (the bar's high/low order is unknown, so the conservative reading is a stop-out on the
+     fill bar); otherwise the position is managed from the next bar.
 
 Detection/setup generation is precomputed and causal (see :mod:`mtf_smc.strategy`); :func:`simulate`
 is the pure event loop (unit-tested with hand-made setups), and :func:`run_backtest` wires detection
@@ -115,26 +119,34 @@ def simulate(
             if s.direction not in open_pos and s.direction not in pending:
                 pending[s.direction] = s
 
-        # 3) resolve pending orders
+        # 3) resolve pending orders: expiry, then the intrabar fill, then close-based invalidation
         for d in list(pending.keys()):
             s = pending[d]
             if ts > s.expiry_ts:
                 del pending[d]; continue
-            if s.invalidation is not None and (
-                (d == "long" and c[i] < s.invalidation) or (d == "short" and c[i] > s.invalidation)
-            ):
-                del pending[d]; continue
             if d in open_pos:
                 continue
-            if lo[i] <= s.entry <= h[i]:                       # limit traded through
+            if lo[i] <= s.entry <= h[i]:                       # limit traded through (intrabar)
+                del pending[d]
                 fill_px = cost.entry_fill(s.entry, d)          # for sizing (1R = |fill - stop|)
                 lots = position_size(equity, cfg.risk_pct, fill_px, s.initial_stop, instrument)
                 if lots <= 0:
-                    del pending[d]; continue
-                open_pos[d] = Position(
+                    continue
+                pos = Position(
                     d, s.entry, lots, s.initial_stop, s.tp_mode, s.htf_target, ts, cost,
                     be_at_2R=cfg.be_at_2R, be_trigger_R=cfg.be_trigger_R, tag=s.tag,
                 )
+                closed = pos.on_fill_bar(bar, ts)              # stop inside the fill bar => stopped
+                if closed is None:
+                    open_pos[d] = pos
+                else:
+                    equity += closed.net_money
+                    trades.append(closed)
+                    eq_ts.append(ts); eq_val.append(equity)
+                continue
+            if s.invalidation is not None and (                # untouched order: close-based cancel
+                (d == "long" and c[i] < s.invalidation) or (d == "short" and c[i] > s.invalidation)
+            ):
                 del pending[d]
 
     # Mark out anything still open at end-of-data.

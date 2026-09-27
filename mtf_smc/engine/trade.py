@@ -209,6 +209,21 @@ class Position:
 
         return None
 
+    def on_fill_bar(self, bar: Bar, ts: pd.Timestamp) -> ClosedTrade | None:
+        """Check the bar the limit filled on for a stop breach (conservative intrabar assumption).
+
+        The order of the fill bar's high and low is unknown, so a stop inside its range is taken as
+        hit *after* the fill: the position closes at the stop on the fill bar. Favourable levels
+        (breakeven, +2R, take-profit) are not credited on the fill bar; :meth:`on_bar` manages the
+        position from the next bar.
+        """
+        if self.R_unit <= 0 or not stop_hit(bar, self.direction, self.stop):
+            return None
+        adv = bar.low if self.direction == "long" else bar.high
+        self.mae_R = min(self.mae_R, self._profit(adv) / self.R_unit)
+        self._book(self.remaining, self.stop, ts, "stop")
+        return self._finalize(ts, "stop")
+
     def force_close(self, ts: pd.Timestamp, price: float, reason: str = "end") -> ClosedTrade:
         """Close the remainder at ``price`` (end-of-data mark-out); charges spread+commission, no slippage."""
         self._book(self.remaining, float(price), ts, reason)

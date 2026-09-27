@@ -44,6 +44,8 @@ class TFView:
     pois: List[POI]
     major_swings_high: List[Swing]
     major_swings_low: List[Swing]
+    swing_lookback: int                    # fractal half-width k of swings_high/low
+    major_swing_lookback: int              # fractal half-width k of major_swings_high/low
     # Precomputed fast-lookup structures (per direction):
     fvg_by_dir: Dict[str, List[FVG]] = field(default_factory=dict)
     fvg_ci_by_dir: Dict[str, np.ndarray] = field(default_factory=dict)   # confirm indices, ascending
@@ -99,14 +101,19 @@ class TFView:
 
         ``major=True`` uses the larger-fractal "major" swings (significant key levels / liquidity
         pools, typically further away ⇒ higher R:R); otherwise the ordinary swings.
+
+        A fractal swing at bar ``j`` with half-width ``k`` is confirmed only once bars ``j+1 .. j+k``
+        have closed (:mod:`mtf_smc.smc.swings`), so it is usable from the close of bar ``j + k``,
+        never from the close of the swing bar itself.
         """
         if direction == "long":
             swings = self.major_swings_high if major else self.swings_high
         else:
             swings = self.major_swings_low if major else self.swings_low
+        k = self.major_swing_lookback if major else self.swing_lookback
         best: Optional[float] = None
         for s in swings:
-            if self.df.index[s.index] + self.dur > ts:
+            if self.close_time(s.index + k) > ts:   # ascending index => later swings confirm later
                 break
             if direction == "long" and s.price > beyond:
                 best = s.price if best is None else min(best, s.price)
@@ -146,6 +153,7 @@ def build_tf_view(m1: pd.DataFrame, tf: str, cfg: StrategyConfig) -> TFView:
         tf=tf, df=df, dur=dur, close_times=df.index + dur, atr=atr, bias=bias,
         swings_high=sh, swings_low=sl, fvgs=fvgs, structure=structure, pois=pois,
         major_swings_high=major_sh, major_swings_low=major_sl,
+        swing_lookback=cfg.swing_lookback, major_swing_lookback=cfg.major_swing_lookback,
         fvg_by_dir=fvg_by_dir, fvg_ci_by_dir=fvg_ci_by_dir,
     )
 

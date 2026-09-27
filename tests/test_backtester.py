@@ -53,11 +53,42 @@ def test_unfilled_order_expires():
     assert trades == [] and final == pytest.approx(100_000.0)
 
 
-def test_invalidation_cancels_before_fill():
-    m1 = _m1([(100, 100.4, 98.9, 99.0)])   # entry 99 is in range, but close 99.0 < invalidation 99.5
+def test_fill_is_resolved_before_close_invalidation():
+    # Bar 0 trades down through the long limit 2000 (intrabar) and only then closes at 1989, below
+    # the invalidation 1995. The fill happened before that close was known, so the trade must exist
+    # (it then stops out on bar 1); cancelling it on bar 0's close would drop a likely loser.
+    m1 = _m1([(2001, 2002, 1988, 1989),
+              (1989, 1990, 1980, 1982)])
+    s = _setup(m1, entry=2000.0, stop=1985.0, invalidation=1995.0)
+    trades, _, final = simulate(m1, [s], StrategyConfig(), XAUUSD, NOCOST)
+    assert len(trades) == 1
+    assert trades[0].entry_ts == m1.index[0]
+    assert trades[0].exit_reason == "stop" and trades[0].realized_R == pytest.approx(-1.0)
+    assert final < 100_000.0
+
+
+def test_close_invalidation_cancels_untouched_order():
+    # Bar 0 never reaches the limit 99 and closes below the invalidation 99.5 -> cancelled, so the
+    # later touch of 99 on bar 1 must not fill.
+    m1 = _m1([(100, 100.4, 99.2, 99.3),
+              (99.3, 99.4, 98.9, 99.0)])
     s = _setup(m1, entry=99.0, stop=98.0, invalidation=99.5)
-    trades, _, _ = simulate(m1, [s], StrategyConfig(), XAUUSD, NOCOST)
-    assert trades == []                    # cancelled by invalidation before filling
+    trades, _, final = simulate(m1, [s], StrategyConfig(), XAUUSD, NOCOST)
+    assert trades == [] and final == pytest.approx(100_000.0)
+
+
+def test_stop_inside_fill_bar_is_a_stop_out():
+    # Bar 0 fills the long limit 100 AND trades through the stop 99; bar 1 then rallies through the
+    # 3R target (103). The fill bar's high/low order is unknown, so the conservative reading is a
+    # stop-out on the fill bar, not a +3R take-profit on the next bar.
+    m1 = _m1([(100.5, 100.6, 98.5, 99.5),
+              (99.5, 104.0, 99.4, 103.5)])
+    trades, eq, final = simulate(m1, [_setup(m1)], StrategyConfig(), XAUUSD, NOCOST)
+    assert len(trades) == 1
+    t = trades[0]
+    assert t.exit_reason == "stop" and t.exit_ts == m1.index[0]
+    assert t.realized_R == pytest.approx(-1.0)
+    assert final == pytest.approx(99_000.0) and eq.iloc[-1] == pytest.approx(99_000.0)
 
 
 def test_one_position_per_direction():

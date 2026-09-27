@@ -22,6 +22,29 @@ def make_m1(start: str = "2020-01-06 00:00", periods: int = 360, tz: str = "UTC"
     return pd.DataFrame({"open": o, "high": h, "low": lo, "close": c}, index=idx)
 
 
+def make_regime_walk(days: int = 30, seed: int = 5) -> pd.DataFrame:
+    """Seeded M1 random walk with an hourly-switching drift, so swings, structure, FVGs and POIs form.
+
+    24/7 bars in June 2021 (no DST switch inside the window); valid OHLC. Used by the synthetic
+    end-to-end tests that must run without the licensed data.
+    """
+    n = days * 1440
+    rng = np.random.default_rng(seed)
+    drift = np.repeat(rng.normal(0.0, 0.02, n // 60 + 1), 60)[:n]
+    close = 100.0 + np.cumsum(rng.normal(0.0, 0.04, n) + drift)
+    open_ = np.r_[100.0, close[:-1]]
+    high = np.maximum(open_, close) + np.abs(rng.normal(0.0, 0.015, n))
+    low = np.minimum(open_, close) - np.abs(rng.normal(0.0, 0.015, n))
+    idx = pd.date_range("2021-06-01", periods=n, freq="1min", tz="UTC")
+    return pd.DataFrame({"open": open_, "high": high, "low": low, "close": close}, index=idx)
+
+
+@pytest.fixture(scope="session")
+def regime_m1():
+    """30 days of :func:`make_regime_walk` (seed 5)."""
+    return make_regime_walk()
+
+
 @pytest.fixture
 def m1_factory():
     """Return the :func:`make_m1` builder so tests can request custom windows."""
