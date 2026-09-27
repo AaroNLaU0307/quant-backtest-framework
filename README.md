@@ -17,7 +17,7 @@ negative result.
 > [`docs/ADDENDUM_2026-09-27.md`](docs/ADDENDUM_2026-09-27.md) §11 · [`RERUN_RUNBOOK.md`](RERUN_RUNBOOK.md).
 
 `Python 3.13` · `pandas/numpy/scipy` · event-driven backtester · intrabar M1 fills · **5 instruments × 42
-configs = 210 trials** · BH-FDR/DSR · correlation-aware meta-analysis · **172 tests (163 run in CI; 9 need
+configs = 210 trials** · BH-FDR/DSR · correlation-aware meta-analysis · **175 tests (166 run in CI; 9 need
 the licensed data)**
 
 ## TL;DR (60 seconds)
@@ -39,7 +39,7 @@ the licensed data)**
   produced an impossible −25 R on EURUSD; the fix was locked behind a systematic absolute-price-constant
   audit of the whole signal/fill/cost path and checked with a synthetic −1R stop-out on each of the five
   instruments; over real grid trades the median stop-out is −1.15 to −1.20 R per instrument.
-- **172 tests**; CI runs the 163 that need no licensed data on every push (badge above). The other 9,
+- **175 tests**; CI runs the 166 that need no licensed data on every push (badge above). The other 9,
   including a real-data end-to-end check, need the HistData cache.
 
 ## The arc at a glance
@@ -148,7 +148,7 @@ Python 3.13 (as in CI); every dependency is pinned in `requirements.txt`.
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 .venv\Scripts\python -m pip install -e . --no-deps              # makes mtf_smc importable for scripts/
-.venv\Scripts\python -m pytest -q                               # 172 tests; 9 skip without the licensed cache
+.venv\Scripts\python -m pytest -q                               # 175 tests; 9 skip without the licensed cache
 .venv\Scripts\python scripts\ingest_instruments.py              # build per-instrument M1 caches
 .venv\Scripts\python scripts\run_all.py                         # grids -> replication -> walk-forward -> random-entry -> figures
 ```
