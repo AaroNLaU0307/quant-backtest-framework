@@ -5,9 +5,8 @@ evidence: plainly, with the number attached, caveats included. Grounded only in 
 [`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md) and [`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md)
 already show; nothing here is a new claim.*
 
-> **Correction (2026-09-27).** The study's numbers quoted below were produced before two look-ahead paths
-> in the engine were fixed; they are pending a re-run. See
-> [`docs/ADDENDUM_2026-09-27.md`](docs/ADDENDUM_2026-09-27.md).
+> **Re-run (2026-09-27).** The numbers quoted below are from the re-run on the engine corrected on
+> 2026-09-27 ([`docs/ADDENDUM_2026-09-27.md`](docs/ADDENDUM_2026-09-27.md) §11).
 
 ---
 
@@ -16,8 +15,8 @@ already show; nothing here is a new claim.*
 Because neither survives the test the study was designed to apply: **is it positive on more than one
 independent instrument, and significant on any?** `cascade_W1_H4_M15_HTF_level` (+2.00 R gold) is positive
 on only one other instrument (GBP +0.14) and **negative on the remaining three** (EUR −0.54, JPY −0.54,
-WTI −0.33); `cascade_W1_H4_M5_HTF_level` (+1.05 R GBPJPY) is **negative on all four of the others** (XAU
-−0.14, EUR −0.62, GBP −0.19, WTI −0.16). Neither is significant on the instrument where it looks best, let
+WTI −0.29); `cascade_W1_H4_M5_HTF_level` (+1.05 R GBPJPY) is **negative on all four of the others** (XAU
+−0.16, EUR −0.59, GBP −0.20, WTI −0.26). Neither is significant on the instrument where it looks best, let
 alone elsewhere. This is the textbook small-*N* mirage — exactly the pattern a single-instrument backtest
 cannot catch, and exactly why the study was designed around replication rather than a single headline cell.
 [`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md) §5.
@@ -28,8 +27,8 @@ Because each is a **different way to be wrong**: **L1** (walk-forward) optimizes
 on a fixed timeframe cascade; **L2** (replication grid) fixes the strategy and varies the *config ×
 instrument* grid with multiplicity control; **L3** (random-entry) removes the *entry signal* and asks
 whether structure adds anything over random entries. A strategy could pass any one of these by luck. A
-CI-excluding-zero walk-forward loss, a 0/210 replication grid, and entries that beat random ones on
-XAUUSD but not by enough to overcome costs point the same way, which is harder to explain away than one
+CI-excluding-zero walk-forward loss, a 0/210 replication grid, and entries on XAUUSD whose E[R] sits inside
+the random-entry nulls' 5–95 % band point the same way, which is harder to explain away than one
 failed test. They are not independent, though: all three run on one engine and one IS period, so an
 engine flaw (like the two fixed on 2026-09-27) reaches all three.
 [`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md) states this design choice up front.
@@ -39,7 +38,7 @@ engine flaw (like the two fixed on 2026-09-27) reaches all three.
 Deliberately, not accidentally. L1 exists to **reproduce a specific pre-existing claim** — the earlier
 single-instrument repo's walk-forward result, which was only ever tested on EUR+XAU with its own earlier
 engine — faithfully, on the new engine, to see if a better engine rescues it (it doesn't: −0.27 R becomes
-**−0.339 R**, same verdict, sharper CI). L2 is the **fresh, pre-registered** multi-instrument design built
+**−0.329 R**, same verdict, sharper CI). L2 is the **fresh, pre-registered** multi-instrument design built
 for this study specifically to test replication. Different questions, different scopes, both stated
 explicitly rather than silently mismatched. [`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md) §L1.
 
@@ -63,7 +62,8 @@ path was enumerated and classified as scale-invariant (ATR/pip/tick/R-relative) 
 inspection**, on a synthetic trade: one constructed −1R stop-out per instrument
 (`scripts/verify_instruments.py`) books **−1.02 to −1.04 R on all five instruments**, GBPJPY and WTIUSD
 included, and every instrument now runs a dedicated −1R stop-out assertion in addition to the original
-winning-trade check. The median over real grid stop-outs is part of the re-run.
+winning-trade check. Over real grid trades the median stop-out (median across configs of each config's
+median, `output/replication/stopouts.csv`) is −1.15 to −1.20 R on every instrument.
 [`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md) §3.2–3.3.
 
 ## "Why BH-FDR plus a correlation-based effective-*N* deflation, instead of Bonferroni across all 210 trials?"
@@ -89,9 +89,8 @@ second, independent reason not to revisit it here.) [`docs/REPORT_MULTI_ASSET.md
 
 Two things, both currently far from met: (1) a configuration **positive-and-significant on at least two
 independent instruments** after the cross-instrument BH-FDR correction — the current count is **0 of
-210**; (2) the L1 walk-forward flipping from **E[R] = −0.339 R, window-block 95% CI [−0.436, −0.223],
-21/24 windows negative** to a CI that excludes zero on the *positive* side (both figures predate the
-2026-09-27 fix). Only after both would
+210**; (2) the L1 walk-forward flipping from **E[R] = −0.329 R, window-block 95% CI [−0.416, −0.228],
+11/12 calendar periods negative** to a CI that excludes zero on the *positive* side. Only after both would
 a single, one-time OOS unsealing be warranted. Nothing here is close, and no partial version of either
 condition (e.g. one instrument, one window) is being treated as sufficient.
 
@@ -103,8 +102,8 @@ a limitation, not smoothed over. The **April-2020 negative-oil event** was inspe
 CFD feed floors at **$6.495 with zero negative or garbage prints** — a genuine high-volatility regime,
 confirmed real by cross-checking against the other known 2019–2020 WTI shocks (Abqaiq, the March-2020 OPEC
 crash), not a data artifact requiring a patch. And the result the caveats might threaten doesn't need
-saving: WTI's M1-cascade expectancy (**−0.47 R**) sits squarely alongside the other four instruments'
-(**−0.53, −0.62, −0.59, −0.65 R**) — the null is uniform, not WTI-dependent.
+saving: WTI's M1-cascade expectancy (**−0.48 R**) sits squarely alongside the other four instruments'
+(**−0.56, −0.61, −0.62, −0.66 R**) — the null is uniform, not WTI-dependent.
 [`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md) §2, §3.4.
 
 ---

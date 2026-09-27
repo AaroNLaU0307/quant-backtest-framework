@@ -1,7 +1,7 @@
 {
   "schema": "headline/v1",
   "repo": "AaroNLaU0307/quant-backtest-framework",
-  "source_commit": "0fb612699f110266c064f2864b032f6312cddf87",
+  "source_commit": "PENDING",
   "as_of": "2026-09-27",
   "rows": [
     {
@@ -9,47 +9,64 @@
       "section": "archive",
       "hypothesis": "MTF SMC price action replicates across instruments",
       "verdict": "FALSIFIED",
-      "verdict_detail": "produced on the engine before the 2026-09-27 look-ahead fixes; re-run pending",
-      "mechanism": "No configuration was positive and significant on even one of the five instruments (pre-fix engine), and cross-instrument return correlation leaves an effective 3.45/5 independent instruments.",
+      "verdict_detail": "re-run on the engine corrected on 2026-09-27 (run at commit 631f33d, code_hash 07f155612e0c70dc); the pre-registered rule (docs/SPEC_multi_instrument.md §7) gives the same verdict as before the fix",
+      "mechanism": "No configuration is positive and significant on even one of the five instruments, 0/210 cells survive the cross-instrument BH-FDR, the L1 walk-forward is negative out of sample, and cross-instrument return correlation leaves an effective 3.45/5 independent instruments.",
       "stats": [
         {
           "label": "config x instrument cells surviving cross-instrument BH-FDR",
           "display": "0/210",
           "value": 0,
-          "artifact": "docs/REPLICATION.md",
-          "locator": "Headline bullet 'Cross-(config x instrument) BH-FDR over all 210 trials: **0 reject**' (written by scripts/run_replication.py)",
-          "provenance": "predates fix; pending re-run"
+          "artifact": "output/replication/cross_cells.csv",
+          "locator": "column p_value over all 210 rows (NaN -> 1); BH at alpha 0.05 via mtf_smc.robustness.stats.benjamini_hochberg",
+          "provenance": "reproduced"
+        },
+        {
+          "label": "configs positive-and-significant on >= 2 instruments",
+          "display": "0/42",
+          "value": 0,
+          "artifact": "output/replication/consistency.csv",
+          "locator": "rows with n_pos_sig >= 2, over all 42 rows",
+          "provenance": "reproduced"
         },
         {
           "label": "L1 walk-forward pooled OOS E[R]",
-          "display": "−0.339 R",
-          "value": -0.339,
-          "artifact": "docs/MERGE_REPORT.md",
-          "locator": "L1 lens table row and result block 'ALL pooled (EUR+XAU)  E[R] = -0.339' (no committed CSV)",
-          "provenance": "predates fix; pending re-run"
+          "display": "−0.329 R",
+          "value": -0.329,
+          "artifact": "output/legacy_walkforward/walkforward_windows.csv",
+          "locator": "mean of every trade R in column oos_R_json (24 windows, N = 438)",
+          "provenance": "reproduced"
         },
         {
-          "label": "L1 walk-forward windows with OOS E[R] < 0",
-          "display": "21/24",
-          "value": 21,
-          "artifact": "docs/MERGE_REPORT.md",
-          "locator": "L1 lens table row '21/24 windows negative' (no committed CSV)",
-          "provenance": "predates fix; pending re-run"
+          "label": "L1 walk-forward window-block 95% CI",
+          "display": "[−0.416, −0.228]",
+          "value": null,
+          "artifact": "output/legacy_walkforward/walkforward_windows.csv",
+          "locator": "mtf_smc.robustness.stats.block_bootstrap_mean_ci over the 24 windows' oos_R_json (defaults: 10,000 draws, seed 7)",
+          "provenance": "reproduced"
+        },
+        {
+          "label": "L1 walk-forward calendar OOS periods with E[R] < 0",
+          "display": "11/12 (one-sided p = 0.0032)",
+          "value": 11,
+          "artifact": "output/legacy_walkforward/walkforward_windows.csv",
+          "locator": "mtf_smc.robustness.walkforward.period_sign_test (both instruments' trades pooled per oos_start)",
+          "provenance": "reproduced"
         },
         {
           "label": "effective number of independent instruments",
           "display": "3.45",
-          "value": 3.451,
-          "artifact": "docs/REPLICATION.md",
-          "locator": "5x5 table under 'Cross-instrument correlation'; participation ratio via mtf_smc.robustness.replication.participation_ratio",
+          "value": 3.45,
+          "artifact": "output/replication/correlation.csv",
+          "locator": "5x5 daily-return correlation matrix; participation ratio via mtf_smc.robustness.replication.participation_ratio",
           "provenance": "reproduced"
         }
       ],
       "caveats": [
-        "All strategy statistics predate the 2026-09-27 engine fixes (take-profit swings used before confirmation; fills resolved after the fill bar's close; stops ignored on the fill bar); re-run pending, see docs/ADDENDUM_2026-09-27.md",
-        "The walk-forward figures exist only in docs/MERGE_REPORT.md (no committed CSV); the 24 windows are 12 calendar periods shared by XAUUSD and EURUSD",
-        "The two eye-catching cells (+2.00 R XAUUSD, +1.05 R GBPJPY) are HTF_level configurations, the path of the take-profit look-ahead",
-        "The effective 3.45/5 comes from daily price-return correlation, which the engine fixes do not affect"
+        "Every strategy statistic is from the 2026-09-27 re-run on the corrected engine (take-profit swings confirmed before use; fills resolved before the close-based cancel; stops honoured on the fill bar); old -> new values in docs/ADDENDUM_2026-09-27.md §11",
+        "The 24 walk-forward windows are 12 calendar periods shared by XAUUSD and EURUSD; the sign test runs on the 12 periods",
+        "The two eye-catching cells (+2.00 R XAUUSD, +1.05 R GBPJPY, HTF_level) are bit-identical before and after the fix and remain non-significant (N 17 and 23)",
+        "The effective 3.45/5 comes from daily price-return correlation, which the engine fixes do not affect",
+        "The gold study's one-time OOS 2023-2025 figure (docs/REPORT.md §7) predates the fix and was not recomputed; the re-run does not reopen that window"
       ]
     }
   ]

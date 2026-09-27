@@ -1,0 +1,46 @@
+==================================================================================
+L1 walk-forward OOS summary (verdict = OOS only; new engine, legacy_smc)
+==================================================================================
+  provenance: windows code_hash=07f155612e0c70dc  report git_commit=631f33d26a5b79e835b73061b3ef228c18b90a18
+  ALL pooled (EUR+XAU): OOS_N=438  E[R]=-0.329  95% CI, block bootstrap over 24 windows = [-0.416, -0.228]
+  sign test over 12 calendar OOS periods (both instruments pooled per period): 11/12 negative, one-sided p = 0.0032
+----------------------------------------------------------------------------------
+  breakdowns (iid trade-level CIs: optimistically narrow, trades within a window correlate):
+  ALL pooled (EUR+XAU)              : OOS_N=438  E[R]=-0.329  iid trade-level 95%CI=[-0.439,-0.214]
+  EURUSD                            : OOS_N=202  E[R]=-0.275  iid trade-level 95%CI=[-0.463,-0.079]
+  XAUUSD                            : OOS_N=236  E[R]=-0.376  iid trade-level 95%CI=[-0.504,-0.239]
+  OOS in 2016-2019 (calm regime)    : OOS_N=243  E[R]=-0.351  iid trade-level 95%CI=[-0.485,-0.212]
+  OOS in 2020-2022 (trend regime)   : OOS_N=195  E[R]=-0.302  iid trade-level 95%CI=[-0.482,-0.102]
+  per-window OOS mean-R (descriptive; XAU and EUR windows share calendar periods): 20/24 windows negative; median=-0.325 mean=-0.316 min=-1.024 max=+0.344
+----------------------------------------------------------------------------------
+  IS->OOS mean gap (IS_r - OOS_r) = +0.336   (large = IS overfit)
+  windows=24  with OOS trades=24
+----------------------------------------------------------------------------------
+  IS-best params per window (large drift = overfit signal):
+     XAUUSD 2016-07-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.618}  IS_r=-0.129->OOS_r=-0.51 (N24)
+     XAUUSD 2017-01-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.786}  IS_r=-0.14->OOS_r=-0.381 (N27)
+     XAUUSD 2017-07-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.618}  IS_r=-0.126->OOS_r=-0.459 (N28)
+     XAUUSD 2018-01-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.5}  IS_r=-0.285->OOS_r=-0.17 (N8)
+     XAUUSD 2018-07-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.618}  IS_r=0.012->OOS_r=-0.308 (N28)
+     XAUUSD 2019-01-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.786}  IS_r=0.398->OOS_r=-0.153 (N18)
+     XAUUSD 2019-07-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.618}  IS_r=-0.213->OOS_r=0.231 (N5)
+     XAUUSD 2020-01-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.786}  IS_r=-0.13->OOS_r=-0.78 (N16)
+     XAUUSD 2020-07-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.5}  IS_r=0.001->OOS_r=-1.024 (N2)
+     XAUUSD 2021-01-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.618}  IS_r=0.832->OOS_r=-0.314 (N35)
+     XAUUSD 2021-07-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.618}  IS_r=0.085->OOS_r=-0.364 (N42)
+     XAUUSD 2022-01-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.618}  IS_r=0.11->OOS_r=-0.336 (N3)
+     EURUSD 2016-07-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.5}  IS_r=-0.088->OOS_r=-0.568 (N45)
+     EURUSD 2017-01-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.5}  IS_r=0.073->OOS_r=-0.747 (N4)
+     EURUSD 2017-07-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.618}  IS_r=-0.261->OOS_r=-0.494 (N21)
+     EURUSD 2018-01-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.5}  IS_r=-0.616->OOS_r=0.035 (N4)
+     EURUSD 2018-07-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.786}  IS_r=-0.07->OOS_r=0.193 (N21)
+     EURUSD 2019-01-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.5}  IS_r=0.17->OOS_r=-0.307 (N8)
+     EURUSD 2019-07-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.5}  IS_r=-0.184->OOS_r=-0.563 (N2)
+     EURUSD 2020-01-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.786}  IS_r=-0.195->OOS_r=-0.175 (N19)
+     EURUSD 2020-07-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.786}  IS_r=-0.013->OOS_r=-0.399 (N17)
+     EURUSD 2021-01-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.618}  IS_r=0.033->OOS_r=-0.098 (N29)
+     EURUSD 2021-07-01: best={"legacy_min_confluence_score": 2, "legacy_min_retracement": 0.618}  IS_r=0.791->OOS_r=0.344 (N6)
+     EURUSD 2022-01-01: best={"legacy_min_confluence_score": 1, "legacy_min_retracement": 0.786}  IS_r=0.431->OOS_r=-0.241 (N26)
+----------------------------------------------------------------------------------
+  VERDICT: (A) no robust edge - OOS significantly negative (block-bootstrap CI below 0).
+  [old earlier-engine walk-forward, for reference: pooled OOS E[R] = -0.27 over EUR+XAU 2015-2023; this updated run is on the sealed-wall IS span 2015-2022]

@@ -1,0 +1,52 @@
+{
+  "git_commit": "631f33d26a5b79e835b73061b3ef228c18b90a18",
+  "code_hash": "07f155612e0c70dc",
+  "grid_code_hash": "07f155612e0c70dc",
+  "inputs": {
+    "XAUUSD": {
+      "code_hash": [
+        "07f155612e0c70dc"
+      ],
+      "git_commit": [
+        "631f33d26a5b79e835b73061b3ef228c18b90a18"
+      ],
+      "sha256": "67cb6fd177bb0461683653a355ae4a0b0868669cf4d8fdcd54a156623a85f669"
+    },
+    "EURUSD": {
+      "code_hash": [
+        "07f155612e0c70dc"
+      ],
+      "git_commit": [
+        "631f33d26a5b79e835b73061b3ef228c18b90a18"
+      ],
+      "sha256": "7c0208ef848fd275a132e2579d8c3bf48f33b7f15e10d71834986dcd850faee8"
+    },
+    "GBPUSD": {
+      "code_hash": [
+        "07f155612e0c70dc"
+      ],
+      "git_commit": [
+        "631f33d26a5b79e835b73061b3ef228c18b90a18"
+      ],
+      "sha256": "fc692e8fe16b256482f68b1757c34823e5c038e6680c97360a8ba8f676b1ae71"
+    },
+    "GBPJPY": {
+      "code_hash": [
+        "07f155612e0c70dc"
+      ],
+      "git_commit": [
+        "631f33d26a5b79e835b73061b3ef228c18b90a18"
+      ],
+      "sha256": "7e84a832c8e524c8301d398ae50c2a927d5d6889f3e32d972e35f28819921af4"
+    },
+    "WTIUSD": {
+      "code_hash": [
+        "07f155612e0c70dc"
+      ],
+      "git_commit": [
+        "631f33d26a5b79e835b73061b3ef228c18b90a18"
+      ],
+      "sha256": "b2e0b9d9532f2dcd94b92fd5d9487be29d0ef7f1ec27315adbdc20b04e7d8745"
+    }
+  }
+}

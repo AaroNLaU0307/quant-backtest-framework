@@ -10,39 +10,36 @@ calibration, Benjamini–Hochberg FDR + Deflated Sharpe, cross-instrument correl
 random-effects meta-analysis, and a once-only locked out-of-sample gate — and the discipline to trust a
 negative result.
 
-> **Correction (2026-09-27).** Two look-ahead paths in the engine were fixed after every number on this
-> page was produced: take-profit targets used swing points before they were confirmed, and a limit order
-> that had already filled could be cancelled by the close of its own fill bar (a stop inside the fill
-> bar is now also honoured). Every result below — the grid, the 0/210 replication, the walk-forward
-> (−0.339 R, 21/24), the eye-catching cells and the random-entry comparison — comes from the pre-fix
-> engine and is **pending a re-run** with the licensed data. The verdict, FALSIFIED (no replicable
-> edge), is the one produced on the pre-fix engine. What changed and the exact re-run:
-> [`docs/ADDENDUM_2026-09-27.md`](docs/ADDENDUM_2026-09-27.md) · [`RERUN_RUNBOOK.md`](RERUN_RUNBOOK.md).
+> **Re-run (2026-09-27).** Two look-ahead paths in the engine were fixed on 2026-09-27 (take-profit
+> swings used before confirmation; a filled limit order cancelled by its own bar's close; a stop inside
+> the fill bar ignored). Every number on this page is from the full re-run on the corrected engine; the
+> verdict, FALSIFIED (no replicable edge), held. Old → new values:
+> [`docs/ADDENDUM_2026-09-27.md`](docs/ADDENDUM_2026-09-27.md) §11 · [`RERUN_RUNBOOK.md`](RERUN_RUNBOOK.md).
 
 `Python 3.13` · `pandas/numpy/scipy` · event-driven backtester · intrabar M1 fills · **5 instruments × 42
-configs = 210 trials** · BH-FDR/DSR · correlation-aware meta-analysis · **170 tests (161 run in CI; 9 need
+configs = 210 trials** · BH-FDR/DSR · correlation-aware meta-analysis · **172 tests (163 run in CI; 9 need
 the licensed data)**
 
 ## TL;DR (60 seconds)
-- **The finding: no replicable edge** (pre-fix engine; re-run pending). 42 pre-registered configs ×
+- **The finding: no replicable edge.** 42 pre-registered configs ×
   5 instruments (XAUUSD, EURUSD, GBPUSD, GBPJPY, WTIUSD), IS 2015–2022: **0/210** config×instrument
-  cells survive cross-instrument BH-FDR; best correlation-aware pooled expectancy **−0.000 R**.
+  cells survive cross-instrument BH-FDR; best correlation-aware pooled expectancy **+0.004 R** (p = 0.49).
 - **Three complementary tests on one engine** — a detection-threshold **walk-forward** (**E[R] =
-  −0.339 R**, window-block 95% CI **[−0.436, −0.223]**, 21/24 windows negative), the
-  **multi-instrument replication grid** above, and a **random-entry null** (XAUUSD only: better than
-  random entries, but not enough to overcome costs) — none shows an edge that survives costs.
+  −0.329 R**, window-block 95% CI **[−0.416, −0.228]**, 11/12 calendar periods negative, p = 0.0032),
+  the **multi-instrument replication grid** above, and a **random-entry null** (XAUUSD only: E[R] above
+  the null mean but inside the null's 5–95 % band, and net-negative) — none shows an edge that survives costs.
 - **The eye-catching cells don't survive scrutiny** — +2.0 R on gold is positive on only 2 of 5
   instruments (the second, GBPUSD, a marginal +0.14); +1.0 R on GBPJPY is positive on only itself.
-  Neither was significant on any instrument. Both are `HTF_level` configurations, the path the
-  take-profit fix changes.
+  Neither was significant on any instrument. Both are `HTF_level` configurations; the engine fix left
+  both cells bit-identical.
 - **Five instruments are never treated as five independent votes** — a cross-instrument correlation
   matrix deflates them to an **effective 3.45**, inflating pooled variance ×1.45 before any significance
   claim.
 - **A real bug was caught by watching the output, not by a passing test** — a gold-calibrated constant
   produced an impossible −25 R on EURUSD; the fix was locked behind a systematic absolute-price-constant
   audit of the whole signal/fill/cost path and checked with a synthetic −1R stop-out on each of the five
-  instruments.
-- **170 tests**; CI runs the 161 that need no licensed data on every push (badge above). The other 9,
+  instruments; over real grid trades the median stop-out is −1.15 to −1.20 R per instrument.
+- **172 tests**; CI runs the 163 that need no licensed data on every push (badge above). The other 9,
   including a real-data end-to-end check, need the HistData cache.
 
 ## The arc at a glance
@@ -51,11 +48,11 @@ the licensed data)**
 flowchart TD
     Q["MTF-SMC price-action strategy<br/>does a real, replicable edge exist?"]
 
-    Q --> L1["L1 — Walk-forward OOS<br/>optimize detection thresholds, EUR+XAU<br/>❌ E[R] = −0.339 R, block CI excludes 0, 21/24 windows negative"]
+    Q --> L1["L1 — Walk-forward OOS<br/>optimize detection thresholds, EUR+XAU<br/>❌ E[R] = −0.329 R, block CI excludes 0, 11/12 periods negative"]
     Q --> L2["L2 — Replication grid<br/>42 configs × 5 instruments, BH-FDR<br/>❌ 0/210 cells survive"]
-    Q --> L3["L3 — Random-entry nulls<br/>remove the entry signal entirely (XAU only)<br/>❌ better than random, not enough to overcome costs"]
+    Q --> L3["L3 — Random-entry nulls<br/>remove the entry signal entirely (XAU only)<br/>❌ inside the random-entry 5–95% band, net-negative"]
 
-    L1 --> V["Verdict: no replicable edge<br/>(pre-fix engine; re-run pending)"]
+    L1 --> V["Verdict: no replicable edge<br/>(re-run on the corrected engine, 2026-09-27)"]
     L2 --> V
     L3 --> V
 
@@ -65,13 +62,12 @@ flowchart TD
 
 ## The honest finding
 **No replicable edge.** Across **42 pre-registered configurations** on five instruments (XAUUSD, EURUSD,
-GBPUSD, GBPJPY, WTIUSD), IS 2015–2022, with realistic per-instrument costs (pre-fix engine; see the
-correction above):
+GBPUSD, GBPJPY, WTIUSD), IS 2015–2022, with realistic per-instrument costs:
 
 - **0 / 42** configurations survive Benjamini–Hochberg FDR on **any** instrument; **0 / 42** are
   positive-and-significant on even one instrument, **0 / 42** on two or more.
 - **0 / 210** (config × instrument) cells survive the cross-instrument BH-FDR.
-- The best **correlation-aware** random-effects pooled expectancy is **−0.000 R** (one-sided p ≥ 0.50).
+- The best **correlation-aware** random-effects pooled expectancy is **+0.004 R** (one-sided p = 0.493).
 - The eye-catching cells don't generalize — **+2.0 R on gold** is positive on only 2 of 5 instruments
   (the second, GBPUSD, a marginal +0.14) and negative on the rest; **+1.0 R on GBPJPY** is positive on
   only itself (1 of 5). Neither was significant on any instrument.
@@ -88,18 +84,21 @@ XAUUSD 2023–2025 window had already been used once, by the earlier gold study:
 ## Three lenses, one verdict
 This repo unifies a previously separate single-instrument **walk-forward** study onto the same engine,
 so the strategy is tested three complementary ways. They share the engine and the IS period (and L1/L3
-share instruments), so an engine flaw reaches all three — which is why all three are being re-run.
+share instruments), so an engine flaw reaches all three — which is why all three were re-run on the
+corrected engine (2026-09-27).
 
 - **Walk-forward OOS** — optimize the legacy detection thresholds on a fixed D1→H1→M5, roll IS18/OOS6:
-  pooled **E[R] = −0.339 R**, window-block bootstrap 95% CI **[−0.436, −0.223]**, **21/24 windows
-  negative**. The 24 windows are 12 calendar periods shared by XAUUSD and EURUSD, so the sign test now
-  runs on the 12 periods (result pending the re-run). This reproduces the old published strategy's
-  **−0.27 R** on the unified engine (on the sealed-wall IS span 2015–2022; the old rolled into 2023).
+  pooled **E[R] = −0.329 R**, window-block bootstrap 95% CI **[−0.416, −0.228]**. The 24 windows are 12
+  calendar periods shared by XAUUSD and EURUSD, so the sign test runs on the 12 periods: **11/12
+  negative, one-sided p = 0.0032** (20/24 windows negative, descriptive). This reproduces the old
+  published strategy's **−0.27 R** on the unified engine (on the sealed-wall IS span 2015–2022; the old
+  rolled into 2023).
 - **Replication grid** (this study) — **0 / 210** config×instrument cells survive cross-instrument BH-FDR.
-- **Random-entry nulls** — on XAUUSD, the only instrument this lens was run on, the structured entries
-  beat both random-entry nulls (e.g. +0.142 R and +0.354 R per trade over the bias-matched null for the
-  two configurations reported): better than random entries, but not enough to overcome costs — the
-  strategy stays net-negative. The gap is an upper bound (the holding-time match is imperfect);
+- **Random-entry nulls** — on XAUUSD, the only instrument this lens was run on, the three survivors'
+  per-trade E[R] is +0.088 to +0.142 R above the bias-matched null mean, but sits at its 72nd–91st
+  percentile — inside the null's 5–95 % band, so on expectancy not distinguishable from random entries
+  (on per-trade Sharpe one of the three reaches the 96th percentile, uncorrected) — and the strategy
+  stays net-negative. The gap is an upper bound (the holding-time match is imperfect);
   [`docs/REPORT.md`](docs/REPORT.md) §6.
 
 The full three-lens write-up — including the behavioural **fidelity** check that the reproduced strategy
@@ -134,7 +133,7 @@ The full three-lens write-up — including the behavioural **fidelity** check th
 - **[`docs/ADDENDUM_2026-09-27.md`](docs/ADDENDUM_2026-09-27.md)** — the engine corrections and the
   status of every published number; **[`RERUN_RUNBOOK.md`](RERUN_RUNBOOK.md)** — the re-run, step by step.
 - **[`docs/MERGE_REPORT.md`](docs/MERGE_REPORT.md)** — the unified **three-lens** report (walk-forward
-  −0.339 R, replication 0/210, random-entry) + the legacy-strategy fidelity evidence and what the merge did.
+  −0.329 R, replication 0/210, random-entry) + the legacy-strategy fidelity evidence and what the merge did.
 - **[`docs/REPORT_MULTI_ASSET.md`](docs/REPORT_MULTI_ASSET.md)** — the full multi-instrument write-up
   (design, methods, the bug + audit, correlation, results, conclusion).
 - [`docs/REPLICATION.md`](docs/REPLICATION.md) — the replication grid + meta-analysis tables.
@@ -149,7 +148,7 @@ Python 3.13 (as in CI); every dependency is pinned in `requirements.txt`.
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
 .venv\Scripts\python -m pip install -e . --no-deps              # makes mtf_smc importable for scripts/
-.venv\Scripts\python -m pytest -q                               # 170 tests; 9 skip without the licensed cache
+.venv\Scripts\python -m pytest -q                               # 172 tests; 9 skip without the licensed cache
 .venv\Scripts\python scripts\ingest_instruments.py              # build per-instrument M1 caches
 .venv\Scripts\python scripts\run_all.py                         # grids -> replication -> walk-forward -> random-entry -> figures
 ```
@@ -178,7 +177,7 @@ risk-parity control):
 **[github.com/AaroNLaU0307/multi-asset-tsmom-research](https://github.com/AaroNLaU0307/multi-asset-tsmom-research)**
 
 ## Limitations & disclaimer
-Every result predates the 2026-09-27 engine fix and awaits a re-run (see the correction at the top).
+Every result is from the 2026-09-27 re-run on the corrected engine (addendum §11).
 Modelled (not historical) spread/slippage; SMC discretion operationalized into one specific rule-set;
 representative retail cost placeholders; WTI's thin 2017 / short 2023; deep cascades are trade-starved by
 construction. **Research and educational only — not investment advice.** The strategy was found to have no

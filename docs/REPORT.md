@@ -6,10 +6,9 @@ look-ahead tests, Monte-Carlo, a two-null random-entry benchmark, walk-forward, 
 Benjamini–Hochberg + Deflated-Sharpe correction, **no configuration shows a statistically real edge**,
 and a single pre-registered out-of-sample evaluation (2023–2025) does not change that conclusion.
 
-> **Correction (2026-09-27).** Every number in this report was produced before two look-ahead paths in
-> the engine were fixed (take-profit swings used before confirmation; fills resolved after the fill
-> bar's close) and a stop on the fill bar was honoured; all in-sample figures are pending a re-run, and
-> the one-time OOS figure (§7) is not recomputed. See [`ADDENDUM_2026-09-27.md`](ADDENDUM_2026-09-27.md).
+> **Re-run (2026-09-27).** The in-sample figures in §5–§6 are from the re-run on the corrected engine
+> ([`ADDENDUM_2026-09-27.md`](ADDENDUM_2026-09-27.md) §11); the one-time OOS figure (§7) predates the
+> fix and is not recomputed.
 
 ---
 
@@ -76,32 +75,39 @@ correction. Secondary ablations are reserved for strong survivors — of which t
   (best raw Sharpe +0.43).
 - Only **4/42 have a positive point estimate, none with N ≥ 30** — small-sample noise (the best,
   `cascade_W1_H4_M15_HTF_level` at +2.0R, is **17 trades**, CI [−0.63, +5.27]).
-- The high-N **M1-LTF cascades** (N ≈ 1,000) are firmly negative (E[R] ≈ −0.5, Sharpe ≈ −2.5,
-  win rate ~18–19%) with CIs **entirely below zero** — costs + a low hit-rate on 3R/HTF targets. This
-  is structural, not a cost double-charge (≈ −0.25R gross before costs, + ~0.1–0.2R/trade realistic
-  cost on tight M1 stops).
+- The high-N **M1-LTF cascades** (the D1-HTF ones, N 1,048–1,192) are firmly negative (E[R] −0.50 to
+  −0.54, Sharpe −2.2 to −2.9, win rate 17–19 % on the fixed-3R and HTF targets) with CIs **entirely below
+  zero** — costs + a low hit-rate on 3R/HTF targets. This is structural, not a cost double-charge (the
+  pre-fix gross/net split, not recomputed in the re-run: ≈ −0.25R gross before costs, + ~0.1–0.2R/trade
+  realistic cost on tight M1 stops).
 
 ## 6. Robustness
 
-**Random-entry decomposition (report-grade, ≥1000 nulls per null).** For the least-negative
-survivors, the strategy's per-trade E[R] is *less* negative than both nulls — e.g. the finalist
-`cascade_W1_H1_M5_fixed_3R`: strategy −0.053 vs bias-matched null −0.195 (**+0.142R**), and
-`cascade_W1_H4_M1_HTF_level`: −0.073 vs −0.427 (**+0.354R**). So the SMC structure picks
-*better-than-random* entries under the same trend filter — **but this is an upper bound, not a clean
-edge**: the holding-time match is imperfect (random entries hit stops far sooner — median holding
-90 vs 27 bars, 28 vs 7), so part of the gap is holding-time, and either way the strategy remains
-**net-negative with a CI crossing zero**. The "structure makes it actively worse than random"
-hypothesis is *not* supported for the best configs; the structure adds modest selectivity that costs
-nonetheless overwhelm.
+**Random-entry decomposition (report-grade, 1000 nulls per null; `output/robustness/random_entry.csv`).**
+For the three survivors (N ≥ 30, least-negative E[R]), the strategy's per-trade E[R] is *less* negative
+than the mean of both nulls — the finalist `cascade_W1_H1_M5_fixed_3R`: strategy −0.053 vs bias-matched
+null −0.195 (**+0.142R**); `cascade_D1_H4_M15_fixed_3R`: −0.043 vs −0.131 (**+0.088R**);
+`cascade_D1_H4_M5_fixed_3R`: −0.103 vs −0.215 (**+0.112R**). But on E[R] the strategy sits at only
+the **72nd–91st percentile** of the bias-matched null (76th–93rd of the unconstrained one), inside each
+null's 5–95 % band: on expectancy the entries are **not distinguishable from random entries** under the
+same trend filter. On per-trade Sharpe, `cascade_D1_H4_M5_fixed_3R` reaches the 96th percentile of both
+nulls (the other two: 74th–83rd) — one of six comparisons, uncorrected for multiplicity. The gap is also an upper bound — the holding-time match is imperfect (random entries stop out far
+sooner: median holding 182 vs 52, 90 vs 27, 80 vs 26 bars) — and the strategy remains **net-negative**.
 
-**Monte-Carlo: point estimates hide ruin.** `cascade_W1_H4_M1_HTF_level` has a near-flat E[R]
-(−0.07) but a **median max-drawdown of −62% and a 100% probability of a ≥20% drawdown** — because it
-is a **4%-win-rate fat tail** (≈ +22R average win): a handful of huge "high-R:R" hits prop up the
-mean while the equity bleeds ruinously between them. Tail-driven, not edge-driven.
+**Monte-Carlo drawdown (the three survivors).** Bootstrap median max-drawdown −13.4 %, −12.5 % and
+−34.2 % (5th percentile −24.4 %, −22.7 %, −52.8 %); probability of a ≥20 % drawdown 0.16, 0.11 and 0.91
+for `cascade_D1_H4_M15_fixed_3R`, `cascade_W1_H1_M5_fixed_3R` and `cascade_D1_H4_M5_fixed_3R`. Point
+estimates near zero still hide deep drawdowns. The fat-tail case is `cascade_W1_H4_M1_HTF_level`
+(no longer a survivor): E[R] −0.112 on a **4.0 % win rate** with a +25.5R average win and a −66 %
+realised max-drawdown — a handful of huge "high-R:R" hits prop up the mean while the equity bleeds
+between them. Tail-driven, not edge-driven.
 
-**Walk-forward / regime.** Across survivors the pattern is consistent: positive only in the quiet
-**2015–2018 range** (+0.17 to +0.71R), strongly negative in **2019–2020 COVID** (−0.96 to −1.14R) and
-**2021–2022 bull** (−0.56R); **every yearly CI crosses zero**. No stable out-of-sample signal in time.
+**Walk-forward / regime.** Across the survivors, the quiet **2015–2018 range** is the only regime with
+a positive E[R] (+0.161 and +0.255R; −0.109R for `cascade_D1_H4_M5_fixed_3R`), **2019–2020 COVID** is
+negative (−1.137, −0.959, −0.199R) and so is the **2021–2022 bull** (−0.153, −0.233, −0.063R). **No
+yearly CI lies entirely above zero**; the few that exclude zero lie below it (small-N years in which
+every trade lost, and 2016 for `cascade_D1_H4_M5_fixed_3R`, N 25, E[R] −0.659R). No stable
+out-of-sample signal in time.
 
 **Mechanics sanity (illustrative).** A `scale_2R_then_HTF` trade that scaled 50% at +2R then stopped
 at breakeven nets **+0.891R** (independent fill-based recheck matches) — the expected ≈ +1R minus
@@ -139,6 +145,10 @@ data point, not a discovered edge.
   construction — flagged throughout (min-N=30).
 - The random-entry holding-time match is imperfect (random entries stop out sooner), so the
   structure-vs-random gap is an upper bound on entry quality.
+- **High slippage on stops (stop slippage ×10, pre-registered in `docs/SPEC.md` §6.5; run in the
+  2026-09-27 re-run, `output/grid/stopslip_x10/master_table.csv`):** 0/42 BH-FDR survivors, max DSR
+  0.00, 4/42 positive point estimates (largest +1.844R, smallest p = 0.116) — the conclusion does not
+  change under it.
 
 ## 9. Conclusion
 A rigorously, honestly tested multi-timeframe SMC price-action strategy shows **no statistically

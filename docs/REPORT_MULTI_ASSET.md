@@ -3,11 +3,9 @@
 **A pre-registered falsification study.** *In-sample 2015–2022 · XAUUSD, EURUSD, GBPUSD, GBPJPY,
 WTIUSD · 42 configurations × 5 instruments = 210 trials · realistic per-instrument costs.*
 
-> **Correction (2026-09-27).** Every result in this report was produced before two look-ahead paths in
-> the engine were fixed (take-profit swings used before confirmation; fills resolved after the fill
-> bar's close) and a stop on the fill bar was honoured; all are pending a re-run. The effective number
-> of independent instruments (§4) does not depend on the engine. See
-> [`ADDENDUM_2026-09-27.md`](ADDENDUM_2026-09-27.md).
+> **Re-run (2026-09-27).** Every result in this report is from the re-run on the corrected engine
+> ([`ADDENDUM_2026-09-27.md`](ADDENDUM_2026-09-27.md) §11). The effective number of independent
+> instruments (§4) does not depend on the engine.
 
 ## Abstract
 
@@ -21,7 +19,7 @@ each instrument **separately** and then testing for consistency across **indepen
 **Result: nothing replicates.** **0 of 42** configurations are positive-and-significant on even **one**
 instrument after within-instrument BH-FDR; **0 of 42** on two or more; and **0 of 210** (config ×
 instrument) cells survive the cross-instrument BH-FDR. The best correlation-aware random-effects pooled
-expectancy is **−0.000 R** (one-sided p ≥ 0.50). The handful of positive point estimates are
+expectancy is **+0.004 R** (one-sided p = 0.493). The handful of positive point estimates are
 small-sample noise that regresses to zero across assets. **A multi-asset falsification is a stronger,
 more credible negative than a single-instrument one** — and that is the contribution.
 
@@ -106,13 +104,16 @@ absolute numerics are `1e-9` float epsilons on *dimensionless* comparisons (negl
 instrument). **Checked dynamically, on a synthetic trade:** `scripts/verify_instruments.py` pushes one
 constructed −1R stop-out per instrument through the trade state machine and books **−1.02 to −1.04 R on
 all five** (XAUUSD −1.022, EURUSD −1.030, GBPUSD −1.033, GBPJPY −1.041, WTIUSD −1.025), GBPJPY and
-WTIUSD included. That is one synthetic trade per instrument, not a statistic over real trades; the
-median over real grid stop-outs is part of the re-run (`output/replication/stopouts.csv`).
+WTIUSD included. That is one synthetic trade per instrument, not a statistic over real trades. **Over
+real grid trades** (`output/replication/stopouts.csv`, 6,888–8,348 stop exits per instrument), the median
+across the 42 configs of each config's median full stop-out is XAUUSD −1.159, EURUSD −1.198, GBPUSD
+−1.165, GBPJPY −1.155 and WTIUSD −1.152 R: real stops book further below −1 R than the synthetic one,
+and no instrument sits far below the others (no sign of a mis-scaled cost constant).
 
 **3.4 Cost-dependence sub-question, answered.** The single-instrument finding that "M1-LTF cascades are
 killed by costs" was cost-driven, so it might not have generalized. It does: the M1-LTF cascades are
-**uniformly negative on all five instruments** (e.g. `cascade_W1_H4_M1_fixed_3R` = −0.53, −0.62, −0.59,
-−0.65, −0.47 R) — the deepest cascades are trade-starved and cost-bled everywhere.
+**uniformly negative on all five instruments** (e.g. `cascade_W1_H4_M1_fixed_3R` = −0.56, −0.61, −0.62,
+−0.66, −0.48 R) — the deepest cascades are trade-starved and cost-bled everywhere.
 
 ## 4 · Cross-instrument dependence (mandatory before any pooling)
 
@@ -142,10 +143,10 @@ positive on, and positive-*and*-significant on?
 
 | config | XAU | EUR | GBP | JPY | WTI | # positive | # pos & sig |
 |---|---:|---:|---:|---:|---:|:--:|:--:|
-| `cascade_W1_H4_M15_fixed_3R` | +0.31 | +0.42 | −0.05 | +0.01 | −0.24 | 3 | **0** |
+| `cascade_W1_H4_M15_fixed_3R` | +0.31 | +0.42 | +0.03 | +0.01 | −0.17 | 4 | **0** |
 | `direct_W1_fixed_3R` | +0.16 | +0.13 | +0.07 | −0.04 | −0.20 | 3 | **0** |
-| `cascade_W1_H4_M15_HTF_level` | **+2.00** | −0.54 | +0.14 | −0.54 | −0.33 | 2 | **0** |
-| `cascade_W1_H4_M5_HTF_level` | −0.14 | −0.62 | −0.19 | **+1.05** | −0.16 | 1 | **0** |
+| `cascade_W1_H4_M15_HTF_level` | **+2.00** | −0.54 | +0.14 | −0.54 | −0.29 | 2 | **0** |
+| `cascade_W1_H4_M5_HTF_level` | −0.16 | −0.59 | −0.20 | **+1.05** | −0.26 | 1 | **0** |
 
 The two brightest cells do not generalize: the **+2.00 R gold** cell is positive on only **2 of 5**
 instruments (the second, GBP, a marginal +0.14) and negative on the other three; the **+1.05 R GBPJPY**
@@ -157,15 +158,15 @@ effective N) — the best six configs by pooled E[R]:
 
 | config | k | pooled E[R] | 95% CI | one-sided p | I² |
 |---|:--:|---:|---|---:|---:|
+| `cascade_W1_H4_M15_fixed_3R` | 5 | +0.004 | [−0.39, +0.40] | 0.493 | 0 |
 | `direct_W1_scale_2R_then_HTF` | 5 | −0.000 | [−0.27, +0.27] | 0.500 | 0 |
 | `direct_W1_fixed_3R` | 5 | −0.004 | [−0.60, +0.59] | 0.506 | 0 |
 | `direct_W1_HTF_level` | 5 | −0.014 | [−0.29, +0.26] | 0.540 | 0 |
-| `cascade_W1_H4_M15_fixed_3R` | 5 | −0.051 | [−0.45, +0.34] | 0.599 | 0 |
-| `direct_D1_fixed_3R` | 5 | −0.088 | [−0.32, +0.14] | 0.777 | 0 |
-| `direct_D1_scale_2R_then_HTF` | 5 | −0.095 | [−0.20, +0.01] | 0.956 | 0 |
+| `direct_D1_fixed_3R` | 5 | −0.083 | [−0.31, +0.14] | 0.765 | 0 |
+| `direct_D1_scale_2R_then_HTF` | 5 | −0.101 | [−0.21, +0.01] | 0.965 | 0 |
 
-Every pooled estimate is ≤ 0, every CI crosses zero, and I² = 0 (no real between-instrument
-signal — just noise around zero).
+The best pooled estimate is +0.004 R (p = 0.493); every CI shown crosses zero, and I² = 0 for all six
+(no real between-instrument signal — just noise around zero).
 
 **Cross-(config × instrument) BH-FDR** over the full **210** trials: **0 reject** (critical p = 0).
 
@@ -174,7 +175,7 @@ signal — just noise around zero).
 **No configuration of this MTF-SMC strategy carries an edge that replicates across independent
 instruments.** The result is consistent and overdetermined: 0/42 within-instrument survivors on each of
 five assets, 0/42 configs positive-and-significant on even one instrument, 0/210 cells past the cross
-correction, and a best pooled expectancy of −0.000 R. The cells that look exciting in isolation (+2 R on
+correction, and a best pooled expectancy of +0.004 R (p = 0.493). The cells that look exciting in isolation (+2 R on
 gold) are exactly what the design was built to *not* be fooled by — they do not repeat.
 
 This is a **stronger** result than the single-instrument study, not a weaker one. A negative on one
