@@ -1,7 +1,7 @@
 """Ingest the replication instruments' HistData XLSX zips -> per-symbol M1 UTC caches.
 
 Source: a folder of ``HISTDATA_COM_XLSX_<SYM>_M1<YEAR>.zip`` (each holding one ``DAT_XLSX_*.xlsx``),
-default ``../trade log`` (override with ``$SMC_RAW_ZIP_DIR``). The ``.xlsx`` is read straight from
+default ``../_Archive/trade log`` (override with ``$SMC_RAW_ZIP_DIR``). The ``.xlsx`` is read straight from
 the zip via an in-memory buffer and pushed through the **verified loader normalization**
 (``read_year_xlsx`` + fixed-EST->UTC + ``normalize_ohlc`` integrity gate) — no silent re-derivation,
 identical treatment to the XAUUSD feed.
@@ -29,7 +29,7 @@ from mtf_smc.data.loader import EST_FIXED, normalize_ohlc, read_year_xlsx
 
 SYMBOLS = ["EURUSD", "GBPUSD", "GBPJPY", "WTIUSD"]
 YEARS = list(range(2015, 2024))  # 2015..2023 inclusive (2023 is the locked OOS year)
-DEFAULT_ZIP_DIR = REPO_ROOT.parent / "trade log"
+DEFAULT_ZIP_DIR = REPO_ROOT.parent / "_Archive" / "trade log"
 
 
 def _zip_path(zip_dir: Path, symbol: str, year: int) -> Path:
